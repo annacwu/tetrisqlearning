@@ -1,7 +1,7 @@
 import pygame
 import random
 
-#Shapes of the blocks
+#Shapes of the blocks (blocks filled on a 4x4 grid, as well as each possible orientation)
 shapes = [
         [[1, 5, 9, 13], [4, 5, 6, 7]],
         [[4, 5, 9, 10], [2, 6, 5, 9]],
@@ -31,11 +31,14 @@ class Block:
     def __init__(self, x, y,n):
         self.x = x
         self.y = y
-        self.type = n
+        self.type = n 
+# NOTE: currently randomly generated in new_block(), if implementing 7-bag change
         self.color = n
         self.rotation = 0
     def image(self):
         return shapes[self.type][self.rotation]
+
+# TODO: ADD DIFFERENT TYPES OF ROTATION (L, R, 180)
 
     def rotate(self):
         self.rotation = (self.rotation + 1) % len(shapes[self.type])
@@ -66,6 +69,9 @@ class Tetris:
             self.field.append(new_line)
 
     #Creates a new block
+
+# TODO: Implement 7-bag
+
     def new_block(self):
         self.block = Block(3, 0,random.randint(0, len(shapes) - 1))
                            
@@ -85,6 +91,7 @@ class Tetris:
         return intersection
 
     #Checks if a row is formed and destroys that line
+# TODO: Check behavior; what happens when you clear multiple lines
     def break_lines(self):
         lines = 0
         for i in range(1, self.height):
