@@ -1,7 +1,7 @@
 import pygame
 import random
 
-#Shapes of the blocks (blocks filled on a 4x4 grid, as well as each possible orientation)
+# Shapes of the blocks (blocks filled on a 4x4 grid, as well as each possible orientation)
 shapes = [
         [[1, 5, 9, 13], [4, 5, 6, 7]],
         [[4, 5, 9, 10], [2, 6, 5, 9]],
@@ -28,7 +28,7 @@ class Block:
     x = 0
     y = 0
     n = 0
-    def __init__(self, x, y,n):
+    def __init__(self, x, y, n):
         self.x = x
         self.y = y
         self.type = n 
