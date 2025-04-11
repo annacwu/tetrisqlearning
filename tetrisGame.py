@@ -210,13 +210,30 @@ class GameBoard:
         random.shuffle(self.blocks)
         self.currentBlock = Block(self.blocks[0])
         self.blocks.pop(0)
-        self.draw()
+        self.drawBlock()
         
 # GOAL: every move call this on all rows, and depending on how many rows return True increase score accordingly
-    def checkClear(self, row):
-        isFull = all(val == 1 for val in row) # checks if the whole row is 1s (full row)
-        if isFull: 
-            return True
+    def checkClear(self):
+        rowsCleared = 0
+        for row in self.board:
+            isFull = all(val == 1 for val in row) # checks if the whole row is 1s (full row)
+            if isFull: 
+                rowsCleared += 1
+        return rowsCleared
+    
+    def clearRows(self, clearedCount):
+        updatedBoard = []
+
+        # currently this clears the row but also clears the whole board for some reason and the size of the board gets messed up
+        for i in range(self.height - 1 - clearedCount): 
+            updatedBoard.append(self.board[i])
+        
+        for _ in range(clearedCount): 
+            updatedBoard.insert(0, [0] * self.width)
+        
+        self.board = updatedBoard
+        
+
         
     # input current block x and y + 1 in whichever direction you want to move
     def canMove(self, newX, newY):
@@ -243,7 +260,8 @@ class GameBoard:
                             return False
         return True
 
-    def draw(self):
+
+    def drawBlock(self):
         self.active = True
         self.activeBoard = [row[:] for row in self.board] # when it draws active board it will look like the saved board
 
@@ -279,21 +297,21 @@ class Tetris(GameBoard):
     def moveRight(self):
         if self.canMove(self.currentBlock.x + 1, self.currentBlock.y):
             self.currentBlock.x += 1
-            self.draw()
+            self.drawBlock()
         else: 
             print('cant move right')
 
     def moveLeft(self):
         if self.canMove(self.currentBlock.x - 1, self.currentBlock.y):
             self.currentBlock.x -= 1
-            self.draw()
+            self.drawBlock()
         else: 
             print('cant move left')
 
     def moveDown(self):
         if self.canMove(self.currentBlock.x, self.currentBlock.y + 1):
             self.currentBlock.y +=1
-            self.draw()
+            self.drawBlock()
         else: 
             self.lockBlock()
             print('cant move down')
@@ -304,7 +322,7 @@ class Tetris(GameBoard):
         newConfig.rotate(3)
         if self.canMove(newConfig.x, newConfig.y):
             self.currentBlock = newConfig
-            self.draw()
+            self.drawBlock()
         else: 
             print('cant rotate left')
 
@@ -313,7 +331,7 @@ class Tetris(GameBoard):
         newConfig.rotate(1)
         if self.canMove(newConfig.x, newConfig.y):
             self.currentBlock = newConfig
-            self.draw()
+            self.drawBlock()
         else: 
             print('cant rotate right')
 
@@ -322,7 +340,7 @@ class Tetris(GameBoard):
         newConfig.rotate(2)
         if self.canMove(newConfig.x, newConfig.y):
             self.currentBlock = newConfig
-            self.draw()
+            self.drawBlock()
         else: 
             print('cant rotate 180')
 
@@ -335,6 +353,7 @@ def playGame(stdscr):
 
     playing = True
     game = Tetris()
+    score = 0
 
     while playing: 
         stdscr.clear() # refresh screen
@@ -342,20 +361,20 @@ def playGame(stdscr):
         if game.currentBlock == None:
             game.newBlock()
 
-
+        # this is which board we are drawing
         board_str = game.__str__().split('\n')
-        # Get terminal size
-        screen_height, screen_width = stdscr.getmaxyx()
 
-        # Get board size
+        # OPERATIONS BELOW TO CENTER IT IN THE TERMINAL
+        # get terminal size
+        screen_height, screen_width = stdscr.getmaxyx()
+        # get board size
         board_height = len(board_str)
         board_width = len(board_str[0]) if board_str else 0
-
-        # Calculate starting y,x to center
+        # calculate starting y,x to center
         start_y = max((screen_height - board_height) // 2, 0)
         start_x = max((screen_width - board_width) // 2, 0)
 
-        # draw board
+        # draw board on terminal
         for i, line in enumerate(board_str):
             stdscr.addstr(start_y + i, start_x, line)
         stdscr.refresh()
@@ -378,6 +397,12 @@ def playGame(stdscr):
         elif key == ord('d'):
             game.rotateRight()
         
+        rowsCleared = game.checkClear()
+        if rowsCleared > 0:
+            game.increaseScore(score)
+            game.clearRows(rowsCleared)
+
+        
         
         time.sleep(0.05) # doesn't loop too fast
 
@@ -386,41 +411,41 @@ curses.wrapper(playGame)
 
 # g = Tetris()
 # g.newBlock()
-# g.draw()
+# g.drawBlock()
 # print(g)
 # print('\n')
 # g.rotateFlip()
-# g.draw()
+# g.drawBlock()
 # print(g)
 # print('\n')
 # g.rotateLeft()
-# g.draw()
+# g.drawBlock()
 # print(g)
 # print('\n')
 # g.rotateRight()
-# g.draw()
+# g.drawBlock()
 # print(g)
 # print('\n')
 # g.rotateRight()
-# g.draw()
+# g.drawBlock()
 # print(g)
 # print('\n')
 # g.newBlock()
-# g.draw()
+# g.drawBlock()
 # print(g)
     
 ###
 # CURRENT FLOW: 
 # g = Tetris() makes a new game board 
 # g.newBlock() summons a block
-# g.draw() turns on the active board and adds the new block to it
-# print(g) will print the active board if run after draw()
+# g.drawBlock() turns on the active board and adds the new block to it
+# print(g) will print the active board if run after drawBlock()
 # g.move_____ moves in the direction wanted unless it cant
 #   if it can't move down it should lock, meaning it keeps it at the bottom
 # 
 # NOTE: any time you want to see the board as moves are happening, you must do: 
 # g.move___
-# g.draw()
+# g.drawBlock()
 # print(g) 
 # and that will visualize the board after the move for you    
     
