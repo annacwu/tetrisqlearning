@@ -174,34 +174,39 @@ class Block:
     
 
 class GameBoard:
-    board = [] # board will be represented as 2d array (matrix)
-    activeBoard = [] # this is the temporary board where we do the block rotation actions and stuff and check bounds
-    currentBlock = None
-    blocks = BLOCK_TYPES
-    active = False # for determining which board to show
-
 
     def __init__(self, height = 20, width = 10, padding = 4): # initialized to standard tetris board size plus padding
         self.height = height
         self.width = width 
+        self.paddedHeight = height + padding
+        self.paddedWidth = width + padding
+
+        self.board = [] # board will be represented as 2d array (matrix)
+        self.activeBoard = [] # this is the temporary board where we do the block rotation actions and stuff and check bounds
+        self.currentBlock = None
+        self.blocks = BLOCK_TYPES[:]
+        self.active = False # for determining which board to show
 
         for _ in range(height):
             row = [0] * width
             self.board.append(row)
 
-        for _ in range(height + padding):
-            row = [0] * (width + padding)
-            self.activeBoard.append(row)
+        for _ in range(self.paddedHeight):
+            rows = [0] * (self.paddedWidth)
+            self.activeBoard.append(rows)
+
             
     def __str__(self):
         if self.active: 
             return "\n".join(" ".join(str(cell) for cell in row) for row in self.activeBoard) 
-        return "\n".join(" ".join(str(cell) for cell in row) for row in self.board)
+        else: 
+            return "\n".join(" ".join(str(cell) for cell in row) for row in self.board)
 
     def newBlock(self): 
         if self.blocks == []:
             self.blocks = BLOCK_TYPES[:]
-            random.shuffle(self.blocks)
+        random.shuffle(self.blocks)
+        print(self.blocks)
         self.currentBlock = Block(self.blocks[0])
         self.blocks.pop(0)
         
@@ -220,15 +225,15 @@ class GameBoard:
                     # need to adjust for where the 1 actually is in the 4x4 grid
                     boardX = newX + x
                     boardY = newY + y 
-                    print('x: ' + str(boardX))
-                    print('y: ' + str(boardY))
+                    # print('x: ' + str(boardX))
+                    # print('y: ' + str(boardY))
 
                     # check boundaries
                     if boardX < 0 or boardX >= 10:
                         print('out of bounds')
                         return False
                     if boardY < 0 or boardY >= 20:
-                        print('at the top')
+                        print('at the top/bottom')
                         return False
                     
                     # it already is a 1
@@ -238,7 +243,7 @@ class GameBoard:
 
     def draw(self):
         self.active = True
-        self.activeBoard = [row[:] for row in self.board]
+        self.activeBoard = [row[:] for row in self.board] # when it draws active board it will look like the saved board
 
         for i in range(4):
             for j in range(4):
@@ -249,6 +254,8 @@ class GameBoard:
                         self.activeBoard[y][x] = 1
 
     def lockBlock(self):
+        # TODO: fix this so that it actually prints the board i wanna see
+        self.active = False
         for j in range(4):
             for i in range(4):
                 if self.currentBlock.block[j][i]:
@@ -260,8 +267,8 @@ class GameBoard:
 class Tetris(GameBoard): 
     score = 0
 
-    def __init__(self, height=24, width=10):
-        super().__init__(height, width)
+    def __init__(self, height=20, width=10, padding=4):
+        super().__init__(height, width, padding)
 
     def increaseScore(self, value):
         self.score += value
@@ -280,23 +287,59 @@ class Tetris(GameBoard):
         else: 
             print('cant move left')
 
+    def moveDown(self):
+        if self.canMove(self.currentBlock.x, self.currentBlock.y + 1):
+            self.currentBlock.y +=1
+            self.draw()
+        else: 
+            self.lockBlock()
+            print('cant move down')
+            return False
+
+    def rotateLeft(self):
+        newConfig = self.currentBlock.rotate(3)
+        if self.canMove(newConfig.x, newConfig.y):
+            self.currentBlock = newConfig
+            self.draw()
+        else: 
+            print('cant rotate left')
+
+    def rotateRight(self):
+        newConfig = self.currentBlock.rotate(1)
+        if self.canMove(newConfig.x, newConfig.y):
+            self.currentBlock = newConfig
+            self.draw()
+        else: 
+            print('cant rotate right')
+
+    def rotateFlip(self):
+        newConfig = self.currentBlock.rotate(2)
+        if self.canMove(newConfig.x, newConfig.y):
+            self.currentBlock = newConfig
+            self.draw()
+        else: 
+            print('cant rotate 180')
+
 
 g = Tetris()
 g.newBlock()
 g.newBlock()
-print(g.currentBlock)
-g.draw()
-print(g)
-print(g.currentBlock.x)
-g.moveRight()
-g.moveRight()
-g.moveRight()
-g.moveRight()
-g.moveRight()
-print(g.currentBlock.x)
 print(g)
     
-    
+###
+# CURRENT FLOW: 
+# g = Tetris() makes a new game board 
+# g.newBlock() summons a block
+# g.draw() turns on the active board and adds the new block to it
+# print(g) will print the active board if run after draw()
+# g.move_____ moves in the direction wanted unless it cant
+#   if it can't move down it should lock, meaning it keeps it at the bottom
+# 
+# NOTE: any time you want to see the board as moves are happening, you must do: 
+# g.move___
+# g.draw()
+# print(g) 
+# and that will visualize the board after the move for you    
     
 [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
