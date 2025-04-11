@@ -206,7 +206,6 @@ class GameBoard:
         if self.blocks == []:
             self.blocks = BLOCK_TYPES[:]
         random.shuffle(self.blocks)
-        print(self.blocks)
         self.currentBlock = Block(self.blocks[0])
         self.blocks.pop(0)
         
@@ -297,7 +296,8 @@ class Tetris(GameBoard):
             return False
 
     def rotateLeft(self):
-        newConfig = self.currentBlock.rotate(3)
+        newConfig = self.currentBlock
+        newConfig.rotate(3)
         if self.canMove(newConfig.x, newConfig.y):
             self.currentBlock = newConfig
             self.draw()
@@ -305,7 +305,8 @@ class Tetris(GameBoard):
             print('cant rotate left')
 
     def rotateRight(self):
-        newConfig = self.currentBlock.rotate(1)
+        newConfig = self.currentBlock
+        newConfig.rotate(1)
         if self.canMove(newConfig.x, newConfig.y):
             self.currentBlock = newConfig
             self.draw()
@@ -313,7 +314,8 @@ class Tetris(GameBoard):
             print('cant rotate right')
 
     def rotateFlip(self):
-        newConfig = self.currentBlock.rotate(2)
+        newConfig = self.currentBlock
+        newConfig.rotate(2)
         if self.canMove(newConfig.x, newConfig.y):
             self.currentBlock = newConfig
             self.draw()
@@ -323,7 +325,27 @@ class Tetris(GameBoard):
 
 g = Tetris()
 g.newBlock()
+g.draw()
+print(g)
+print('\n')
+g.rotateFlip()
+g.draw()
+print(g)
+print('\n')
+g.rotateLeft()
+g.draw()
+print(g)
+print('\n')
+g.rotateRight()
+g.draw()
+print(g)
+print('\n')
+g.rotateRight()
+g.draw()
+print(g)
+print('\n')
 g.newBlock()
+g.draw()
 print(g)
     
 ###
@@ -345,8 +367,6 @@ print(g)
 [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-
 [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
