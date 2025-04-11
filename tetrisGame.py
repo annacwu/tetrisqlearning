@@ -1,4 +1,6 @@
 import random
+import curses
+import time
 
 BLOCK_TYPES = ['O', 'L', 'J', 'I', 'T', 'Z', 'S']
 
@@ -208,6 +210,7 @@ class GameBoard:
         random.shuffle(self.blocks)
         self.currentBlock = Block(self.blocks[0])
         self.blocks.pop(0)
+        self.draw()
         
 # GOAL: every move call this on all rows, and depending on how many rows return True increase score accordingly
     def checkClear(self, row):
@@ -261,6 +264,7 @@ class GameBoard:
                     boardX = self.currentBlock.x + i
                     boardY = self.currentBlock.y + j
                     self.board[boardY][boardX] = 1
+        self.currentBlock = None
 
 
 class Tetris(GameBoard): 
@@ -322,31 +326,88 @@ class Tetris(GameBoard):
         else: 
             print('cant rotate 180')
 
+# currently formatted for playing in terminal
+# stdscr represents the terminal window
+def playGame(stdscr):
+    curses.curs_set(0) # hide blinking terminal cursor
+    stdscr.nodelay(True) # doesn't wait for keypress to do calls
+    stdscr.timeout(100) # refresh rate 100ms
 
-g = Tetris()
-g.newBlock()
-g.draw()
-print(g)
-print('\n')
-g.rotateFlip()
-g.draw()
-print(g)
-print('\n')
-g.rotateLeft()
-g.draw()
-print(g)
-print('\n')
-g.rotateRight()
-g.draw()
-print(g)
-print('\n')
-g.rotateRight()
-g.draw()
-print(g)
-print('\n')
-g.newBlock()
-g.draw()
-print(g)
+    playing = True
+    game = Tetris()
+
+    while playing: 
+        stdscr.clear() # refresh screen
+
+        if game.currentBlock == None:
+            game.newBlock()
+
+
+        board_str = game.__str__().split('\n')
+        # Get terminal size
+        screen_height, screen_width = stdscr.getmaxyx()
+
+        # Get board size
+        board_height = len(board_str)
+        board_width = len(board_str[0]) if board_str else 0
+
+        # Calculate starting y,x to center
+        start_y = max((screen_height - board_height) // 2, 0)
+        start_x = max((screen_width - board_width) // 2, 0)
+
+        # draw board
+        for i, line in enumerate(board_str):
+            stdscr.addstr(start_y + i, start_x, line)
+        stdscr.refresh()
+
+        try:
+           key = stdscr.getch() 
+        except:
+            key = -1
+        
+        if key == curses.KEY_LEFT:
+            game.moveLeft()
+        elif key == curses.KEY_RIGHT:
+            game.moveRight()
+        elif key == curses.KEY_DOWN:
+            game.moveDown()
+        elif key == ord('a'):
+            game.rotateLeft()
+        elif key == ord('s'):
+            game.rotateFlip()
+        elif key == ord('d'):
+            game.rotateRight()
+        
+        
+        time.sleep(0.05) # doesn't loop too fast
+
+
+curses.wrapper(playGame)
+
+# g = Tetris()
+# g.newBlock()
+# g.draw()
+# print(g)
+# print('\n')
+# g.rotateFlip()
+# g.draw()
+# print(g)
+# print('\n')
+# g.rotateLeft()
+# g.draw()
+# print(g)
+# print('\n')
+# g.rotateRight()
+# g.draw()
+# print(g)
+# print('\n')
+# g.rotateRight()
+# g.draw()
+# print(g)
+# print('\n')
+# g.newBlock()
+# g.draw()
+# print(g)
     
 ###
 # CURRENT FLOW: 
