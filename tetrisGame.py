@@ -4,6 +4,10 @@ import time
 
 BLOCK_TYPES = ['O', 'L', 'J', 'I', 'T', 'Z', 'S']
 
+# while playing i have a game tick set up, and gravity will be 
+# move down if ticks % gravity == 0; higher gravity is slower 
+GRAVITY = 10000
+
 BLOCKS = {
     "O": [
         [
@@ -273,6 +277,10 @@ class GameBoard:
                     if 0 <= y < self.height and 0 <= x < self.width:
                         self.activeBoard[y][x] = 1
 
+    
+    # def clearRow(self):
+
+    
     def lockBlock(self):
         # TODO: fix this so that it actually prints the board i wanna see
         self.active = False
@@ -355,10 +363,12 @@ def playGame(stdscr):
     game = Tetris()
     score = 0
 
+    ticks = 0
     while playing: 
         stdscr.clear() # refresh screen
 
         if game.currentBlock == None:
+            # TODO: CHECK FOR FULL LINES AND CLEAR THEM HERE
             game.newBlock()
 
         # this is which board we are drawing
@@ -401,6 +411,9 @@ def playGame(stdscr):
         if rowsCleared > 0:
             game.increaseScore(score)
             game.clearRows(rowsCleared)
+
+        if ticks % GRAVITY == 0:
+            game.moveDown()
 
         
         
