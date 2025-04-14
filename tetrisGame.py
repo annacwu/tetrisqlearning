@@ -6,7 +6,7 @@ BLOCK_TYPES = ['O', 'L', 'J', 'I', 'T', 'Z', 'S']
 
 # while playing i have a game tick set up, and gravity will be 
 # move down if ticks % gravity == 0; higher gravity is slower 
-GRAVITY = 10
+GRAVITY = 5
 
 REPLAY = True
 
@@ -484,58 +484,4 @@ def playGame(stdscr):
 
 
 curses.wrapper(playGame)
-
-# g = Tetris()
-# g.newBlock()
-# g.drawBlock()
-# print(g)
-# print('\n')
-# g.rotateFlip()
-# g.drawBlock()
-# print(g)
-# print('\n')
-# g.rotateLeft()
-# g.drawBlock()
-# print(g)
-# print('\n')
-# g.rotateRight()
-# g.drawBlock()
-# print(g)
-# print('\n')
-# g.rotateRight()
-# g.drawBlock()
-# print(g)
-# print('\n')
-# g.newBlock()
-# g.drawBlock()
-# print(g)
     
-###
-# CURRENT FLOW: 
-# g = Tetris() makes a new game board 
-# g.newBlock() summons a block
-# g.drawBlock() turns on the active board and adds the new block to it
-# print(g) will print the active board if run after drawBlock()
-# g.move_____ moves in the direction wanted unless it cant
-#   if it can't move down it should lock, meaning it keeps it at the bottom
-# 
-# NOTE: any time you want to see the board as moves are happening, you must do: 
-# g.move___
-# g.drawBlock()
-# print(g) 
-# and that will visualize the board after the move for you    
-    
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
