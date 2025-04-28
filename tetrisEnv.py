@@ -1,6 +1,7 @@
 from tetrisGame import Tetris
 import numpy as np
 
+# NOTE: im not sure if this is checking how we would want it to in normal gameplay like with ticks
 class TetrisEnv: 
     def __init__(self):
         self.game = Tetris()
