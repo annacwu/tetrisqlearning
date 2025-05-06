@@ -13,8 +13,12 @@ class TetrisEnv:
         self.num_actions = len(self.actions)
         self.state_dim = 200
 
+    def getState(self):
+        return np.array(self.game.board[self.game.hidden:]).flatten()
+    
     def reset(self):
         self.game = Tetris()
+        self.current_combo = 0
         self.game.newBlock()
         self.term = False
         return self.getState()
@@ -31,9 +35,9 @@ class TetrisEnv:
             if moved == False:
                 rowsCleared = self.game.clearRows() if hasattr(self.game, 'clearRows') else 0
                 if rowsCleared == 0:
-                    currentCombo = 0
+                    self.current_combo = 0
                 else:
-                    currentCombo += 1
+                    self.current_combo += 1
                 
                 if self.game.checkTop():
                     self.term = True
