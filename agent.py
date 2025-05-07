@@ -4,8 +4,9 @@ import torch
 from torch import nn, optim
 from tqdm.notebook import tqdm
 import random
+import curses
 
-ENV = TetrisEnv()
+# ENV = TetrisEnv()
 
 class QNetwork(nn.Module):
 
@@ -118,4 +119,14 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
 
     return policy, ep_rewards
 
-q_policy, q_returns = train(ENV, lr=2e-4, num_interactions=10000)
+# q_policy, q_returns = train(ENV, lr=2e-4, num_interactions=10000)
+# print(q_returns)
+
+def main(stdscr):
+    # Create the environment with stdscr for rendering
+    env = TetrisEnv(stdscr)
+    policy, rewards = train(env, lr=2e-4, num_interactions=10000)
+    print(rewards)
+
+if __name__ == "__main__":
+    curses.wrapper(main)  # Initialize curses and start the main function
