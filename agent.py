@@ -74,10 +74,11 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
             action_idx = rng.integers(0, env.num_actions)
             action = env.actions[action_idx]
         else: 
-            action = policy(torch.tensor(state, dtype=torch.float)).argmax()
+            action_idx = policy(torch.tensor(state, dtype=torch.float)).argmax()
+            action = env.actions[action_idx]
 
         nstate, reward, term = env.step(action)
-        replay_buffer.push(state, action, reward, nstate, term)
+        replay_buffer.push(state, action_idx, reward, nstate, term)
         state = nstate
         ep_r += reward
 
@@ -90,7 +91,7 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
             nst_batch = torch.tensor(np.array(nst_batch)).float()
             t_batch = torch.tensor(np.array(t_batch))
 
-            pred_vals = policy(st_batch).gatcher(1, act_batch).squeeze()
+            pred_vals = policy(st_batch).gather(1, act_batch).squeeze()
 
             pred_next_vals = target(nst_batch).max(dim=1).values
 
