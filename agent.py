@@ -1,4 +1,4 @@
-from tetrisEnv import TetrisEnv
+from environment import TetrisEnv
 import numpy as np
 import torch
 from torch import nn, optim
@@ -7,7 +7,7 @@ import random
 import curses
 
 """ Uncomment this if you want to just run it without rendering """
-# ENV = TetrisEnv()
+ENV = TetrisEnv()
 
 class QNetwork(nn.Module):
 
@@ -120,18 +120,18 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
 
     return policy, ep_rewards
 
-# q_policy, q_returns = train(ENV, lr=2e-4, num_interactions=10000)
-# print(q_returns)
+q_policy, q_returns = train(ENV, lr=2e-4, num_interactions=10000)
+print(q_returns)
 
 """
 run this one if you want it to render in terminal
 using python3 -i agent.py
 make sure it is in a terminal window sized adequately large or you will get errors
 """
-def main(stdscr):
-    env = TetrisEnv(stdscr)
-    policy, rewards = train(env, lr=2e-4, num_interactions=10000)
-    print(rewards)
+# def main(stdscr):
+#     env = TetrisEnv(stdscr)
+#     policy, rewards = train(env, lr=2e-4, num_interactions=10000)
+#     print(rewards)
 
-if __name__ == "__main__":
-    curses.wrapper(main) 
+# if __name__ == "__main__":
+#     curses.wrapper(main) 

@@ -1,4 +1,4 @@
-from tetrisGame import Tetris
+from tetris import Tetris
 import numpy as np
 
 # NOTE: there is no gravity currently. need to implement that for actual tetris
@@ -64,7 +64,7 @@ class TetrisEnv:
 
         # basic system that attempts to increase scoring for bigger clears and longer combos
         self.score += (rowsCleared + self.currentCombo) ** 2 
-        reward += self.score
+        reward = self.score
 
         # Check if we have stdscr for rendering
         if self.stdscr: 
