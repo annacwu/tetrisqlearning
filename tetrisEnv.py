@@ -1,7 +1,7 @@
 from tetrisGame import Tetris
 import numpy as np
 
-# NOTE: im not sure if this is checking how we would want it to in normal gameplay like with ticks
+# NOTE: there is no gravity currently. need to implement that for actual tetris
 class TetrisEnv: 
     def __init__(self, stdscr=None):
         self.game = Tetris()
@@ -27,6 +27,7 @@ class TetrisEnv:
         return self.getState()
 
     def step(self, a):
+        # if they clear no rows, reward should still be -1
         reward = -1
 
         # Create new block if no block exists
@@ -65,35 +66,28 @@ class TetrisEnv:
         self.score += (rowsCleared + self.currentCombo) ** 2 
         reward += self.score
 
-        # Check if we have stdscr (curses environment)
+        # Check if we have stdscr for rendering
         if self.stdscr: 
             self.render(self.stdscr)
 
         return self.getState(), reward, self.term
 
     def getState(self):
-        # FIXME: this should maybe be activeboard? or also include the block?
         board = np.array(self.game.board).flatten()
-        # if self.game.currentBlock is not None: 
-        #     block = np.array(self.game.currentBlock.shape).flatten()
-        # else: 
-        #     block = np.zeros((16), dtype=np.int32) # 16 because blocks are 4x4 grids
-
-        # state = np.concatenate([board, block])
         return board
 
+    # This is essentially taken from the play function in tetrisGame.py 
+    # to render the terminal screen
     def render(self, stdscr):
-        stdscr.clear()  # Refresh screen
+        stdscr.clear()  
         board_str = self.game.__str__().split('\n')
 
-        # Get terminal size for centering the game board
         screen_height, screen_width = stdscr.getmaxyx()
         board_height = len(board_str)
         board_width = len(board_str[0]) if board_str else 0
         start_y = max((screen_height - board_height) // 2, 0)
         start_x = max((screen_width - board_width) // 2, 0)
 
-        # Draw board on terminal
         for i, line in enumerate(board_str):
             stdscr.addstr(start_y + i, start_x, line)
         stdscr.refresh()

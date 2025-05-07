@@ -6,6 +6,7 @@ from tqdm.notebook import tqdm
 import random
 import curses
 
+""" Uncomment this if you want to just run it without rendering """
 # ENV = TetrisEnv()
 
 class QNetwork(nn.Module):
@@ -122,11 +123,15 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
 # q_policy, q_returns = train(ENV, lr=2e-4, num_interactions=10000)
 # print(q_returns)
 
+"""
+run this one if you want it to render in terminal
+using python3 -i agent.py
+make sure it is in a terminal window sized adequately large or you will get errors
+"""
 def main(stdscr):
-    # Create the environment with stdscr for rendering
     env = TetrisEnv(stdscr)
     policy, rewards = train(env, lr=2e-4, num_interactions=10000)
     print(rewards)
 
 if __name__ == "__main__":
-    curses.wrapper(main)  # Initialize curses and start the main function
+    curses.wrapper(main) 

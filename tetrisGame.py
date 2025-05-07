@@ -254,8 +254,6 @@ class GameBoard:
                     # need to adjust for where the 1 actually is in the 4x4 grid
                     boardX = newX + x
                     boardY = newY + y 
-                    # print('x: ' + str(boardX))
-                    # print('y: ' + str(boardY))
 
                     # check boundaries
                     if boardX < 0 or boardX >= self.width:
@@ -273,7 +271,8 @@ class GameBoard:
 
     def drawBlock(self):
         self.active = True
-        self.activeBoard = [row[:] for row in self.board] # when it draws active board it will look like the saved board
+        # when it draws active board it will look like the saved board
+        self.activeBoard = [row[:] for row in self.board] 
 
         for i in range(4):
             for j in range(4):
@@ -283,12 +282,7 @@ class GameBoard:
                     if 0 <= y < self.totalHeight and 0 <= x < self.width:
                         self.activeBoard[y][x] = 1
 
-    
-    # def clearRow(self):
-
-    
     def lockBlock(self):
-        # TODO: fix this so that it actually prints the board i wanna see
         self.active = False
         for j in range(4):
             for i in range(4):
@@ -408,9 +402,6 @@ def playGame(stdscr):
         currentCombo = 0
         ticks = 0
         
-    # how many pieces placed in a row that have cleared at least one row
-        
-
         while playing: 
             
             stdscr.clear() # refresh screen
@@ -429,7 +420,6 @@ def playGame(stdscr):
             score += (rowsCleared + currentCombo) ** 2 
             
             if game.currentBlock == None:
-                # TODO: CHECK FOR FULL LINES AND CLEAR THEM HERE
                 game.newBlock()
 
             # this is which board we are drawing
