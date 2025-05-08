@@ -218,6 +218,7 @@ class GameBoard:
             return "\n".join(" ".join(str(cell) for cell in row) for row in visible_board)
 
     def newBlock(self): 
+        self.rotationCount = 0
         if self.blocks == []:
             self.blocks = BLOCK_TYPES[:]
         random.shuffle(self.blocks)

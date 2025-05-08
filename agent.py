@@ -5,6 +5,7 @@ from torch import nn, optim
 from tqdm.notebook import tqdm
 import random
 import curses
+import time
 
 """ Uncomment this if you want to just run it without rendering """
 ENV = TetrisEnv()
@@ -67,11 +68,17 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
 
     rng = np.random.default_rng()
 
+    eps_start = 1.0
+    eps_min = 0.05
+    
     state = env.reset()
     ep_r = 0
     ep_rewards = []
     for i in tqdm(range(num_interactions)):
         # USING GREEDY EPSILON
+        
+        eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
+        
         if rng.random() < eps: 
             action_idx = rng.integers(0, env.num_actions)
             action = env.actions[action_idx]
@@ -128,10 +135,25 @@ run this one if you want it to render in terminal
 using python3 -i agent.py
 make sure it is in a terminal window sized adequately large or you will get errors
 """
-# def main(stdscr):
-#     env = TetrisEnv(stdscr)
-#     policy, rewards = train(env, lr=2e-4, num_interactions=10000)
-#     print(rewards)
+def main(stdscr):
+    # Tell the env to use this curses window for drawing
+    env = TetrisEnv(stdscr)
 
-# if __name__ == "__main__":
-#     curses.wrapper(main) 
+    # Train your agent (it will render every step)
+    policy, rewards = train(env, lr=2e-4, num_interactions=10000)
+
+    # When training is done, you can optionally let it “play” one more game:
+    obs = env.reset()  # you may need to add a reset() in TetrisEnv
+    done = False
+    while not done:
+        # pick the greedy action from your learned policy
+        with torch.no_grad():
+            logits = policy(torch.tensor(obs).float().unsqueeze(0))
+        act = logits.argmax(dim=1).item()
+        obs, reward, done = env.step(env.actions[act])
+        time.sleep(0.005)    # slow down so you can watch
+    stdscr.getch()         # wait for a keypress before exiting
+
+if __name__ == "__main__":
+    # this launches “main” and gives it a full-screen terminal window
+    curses.wrapper(main)

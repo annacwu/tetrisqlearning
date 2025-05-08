@@ -1,6 +1,7 @@
 from tetris import Tetris
 import numpy as np
 
+
 # NOTE: there is no gravity currently. need to implement that for actual tetris
 class TetrisEnv: 
     def __init__(self, stdscr=None):
@@ -9,11 +10,15 @@ class TetrisEnv:
         self.state = None
         self.game.newBlock()
         self.term = False
-        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip'] 
+        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
         self.num_actions = len(self.actions)
         self.state_dim = 240 # because using active board now
         self.currentCombo = 0
         self.stdscr = stdscr
+        self.stepPenalty = 0.01
+        self.rotation_penalty = 0.01
+        self.maxRotations = 4
+        self.rotationCount = 0
 
     def getState(self):
         return np.array(self.game.activeBoard).flatten()
@@ -28,12 +33,22 @@ class TetrisEnv:
 
     def step(self, a):
         # if they clear no rows, reward should still be -1
-        reward = -1
+        prev_score = self.score
+        rotation_penalty = 0.0
+        drop_bonus = 0.0
 
         # Create new block if no block exists
         if self.game.currentBlock is None:
+            self.rotationCount = 0
             self.game.newBlock()
 
+        if a in ('rotateLeft', 'rotateRight', 'rotateFlip'):
+            if self.rotationCount >= self.maxRotations:
+                rotation_penalty = self.rotation_penalty
+            else:
+                self.rotationCount += 1
+            getattr(self.game, a)()
+        
         if a == 'left': 
             self.game.moveLeft()
         elif a == 'right':
@@ -41,30 +56,31 @@ class TetrisEnv:
         elif a == 'down':
             moved = self.game.moveDown()
             if moved == False:
-                rowsCleared = self.game.clearRows() if hasattr(self.game, 'clearRows') else 0
-                if rowsCleared == 0:
-                    self.currentCombo = 0
-                else:
-                    self.currentCombo += 1
-        elif a == 'rotateLeft':
-            self.game.rotateLeft()
-        elif a == 'rotateRight':
-            self.game.rotateRight()
-        elif a == 'rotateFlip':
-            self.game.rotateFlip()
+                rows = self.game.clearRows()
+                self.currentCombo = self.currentCombo + 1 if rows > 0 else 0
+                self.rotationCount = 0
+                self.game.newBlock()
+            
 
-        rowsCleared = self.game.clearRows()
-        if rowsCleared == 0:
-            self.currentCombo = 0
+        moved = self.game.moveDown()
+        if moved:
+            reward += 0.005
+
+        if not moved:
+            rows = self.game.clearRows()
+            if rows > 0:
+                self.currentCombo += 1
+            else:
+                self.currentCombo = 0
+            self.game.newBlock()
         else:
-            self.currentCombo += 1
+            rows = 0
+        
+        self.score += (rows + self.currentCombo) ** 2
+        reward = (self.score - prev_score) - self.stepPenalty
         
         if self.game.checkTop():
             self.term = True
-
-        # basic system that attempts to increase scoring for bigger clears and longer combos
-        self.score += (rowsCleared + self.currentCombo) ** 2 
-        reward = self.score
 
         # Check if we have stdscr for rendering
         if self.stdscr: 
