@@ -5,7 +5,6 @@ import numpy as np
 class TetrisEnv: 
     def __init__(self, stdscr=None):
         self.game = Tetris()
-        self.score = 0
         self.state = None
         self.game.newBlock()
         self.term = False
@@ -13,6 +12,8 @@ class TetrisEnv:
         self.num_actions = len(self.actions)
         self.state_dim = 240 # because using active board now
         self.currentCombo = 0
+        self.ticks = 0
+        self.gravity = 5
         self.stdscr = stdscr
 
     def getState(self):
@@ -23,13 +24,10 @@ class TetrisEnv:
         self.currentCombo = 0
         self.game.newBlock()
         self.term = False
-        self.score = 0
+        self.ticks = 0
         return self.getState()
 
     def step(self, a):
-        # if they clear no rows, reward should still be -1
-        reward = -1
-
         # Create new block if no block exists
         if self.game.currentBlock is None:
             self.game.newBlock()
@@ -55,22 +53,18 @@ class TetrisEnv:
         elif a == 'hardDrop':
             self.game.hardDrop()
 
-        rowsCleared = self.game.clearRows()
-        if rowsCleared == 0:
-            self.currentCombo = 0
-        else:
-            self.currentCombo += 1
-        
+        self.ticks += 1
+        if self.ticks % self.gravity == 0:
+            self.game.moveDown()
+
         if self.game.checkTop():
             self.term = True
-
-        # basic system that attempts to increase scoring for bigger clears and longer combos
-        self.score += (rowsCleared + self.currentCombo) ** 2 
-        reward = self.score
 
         # Check if we have stdscr for rendering
         if self.stdscr: 
             self.render(self.stdscr)
+
+        reward = self.calculateReward()
 
         return self.getState(), reward, self.term
 
@@ -93,6 +87,29 @@ class TetrisEnv:
         for i, line in enumerate(board_str):
             stdscr.addstr(start_y + i, start_x, line)
         stdscr.refresh()
+
+    def calculateReward(self):
+        # Clear rows and compute basic reward
+        rowsCleared = self.game.clearRows()
+        reward = 0
+
+        if rowsCleared > 0:
+            self.currentCombo += 1
+            reward += (rowsCleared ** 2) * 10 + self.currentCombo * 2
+        else:
+            self.currentCombo = 0
+
+        # Penalize based on height
+        max_height = self.game.checkColumnHeight()
+        reward -= max_height * 0.5  # Increase penalty magnitude
+
+        # Additional shaping (optional but helpful):
+        # holes = self.game.countHoles()
+        # bumpiness = self.game.computeBumpiness()
+        # reward -= holes * 1.0
+        # reward -= bumpiness * 0.5
+
+        return reward
 
     def terminal(self):
         pass

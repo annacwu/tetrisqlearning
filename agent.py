@@ -67,11 +67,15 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
 
     rng = np.random.default_rng()
 
+    eps_start = 1.0
+    eps_min = 0.05
+
     state = env.reset()
     ep_r = 0
     ep_rewards = []
     for i in tqdm(range(num_interactions)):
         # USING GREEDY EPSILON
+        eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
         if rng.random() < eps: 
             action_idx = rng.integers(0, env.num_actions)
             action = env.actions[action_idx]

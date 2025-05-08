@@ -494,5 +494,5 @@ def playGame(stdscr):
             break
 
 
-curses.wrapper(playGame)
+# curses.wrapper(playGame)
     
