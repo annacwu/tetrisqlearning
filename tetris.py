@@ -374,6 +374,12 @@ class Tetris(GameBoard):
                 return
         print("cant rotate 180")
 
+    def hardDrop(self):
+        while self.canMove(self.currentBlock, self.currentBlock.x, self.currentBlock.y + 1):
+            self.currentBlock.y +=1
+        self.lockBlock()
+        
+
 
 def game_over_screen(stdscr, score):
     stdscr.clear()
@@ -457,6 +463,8 @@ def playGame(stdscr):
                 game.rotateFlip()
             elif key == ord('d'):
                 game.rotateRight()
+            elif key == ord(' '):
+                game.hardDrop()
             
             # we can stop the game now
             elif key == ord('p'):

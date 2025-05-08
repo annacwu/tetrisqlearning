@@ -9,7 +9,7 @@ class TetrisEnv:
         self.state = None
         self.game.newBlock()
         self.term = False
-        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip'] 
+        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
         self.num_actions = len(self.actions)
         self.state_dim = 240 # because using active board now
         self.currentCombo = 0
@@ -52,6 +52,8 @@ class TetrisEnv:
             self.game.rotateRight()
         elif a == 'rotateFlip':
             self.game.rotateFlip()
+        elif a == 'hardDrop':
+            self.game.hardDrop()
 
         rowsCleared = self.game.clearRows()
         if rowsCleared == 0:
