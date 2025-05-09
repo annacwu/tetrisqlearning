@@ -11,10 +11,13 @@ class TetrisEnv:
         self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
         self.num_actions = len(self.actions)
         self.state_dim = 240 # because using active board now
+        self.score = 0 # implementing like how a basic tetris does. points for every cell moved down without gravity
         self.currentCombo = 0
         self.ticks = 0
         self.gravity = 5
+        self.rotationCount = 0
         self.stdscr = stdscr
+        self.blocks_placed = 0
 
     def getState(self):
         return np.array(self.game.activeBoard).flatten()
@@ -25,12 +28,16 @@ class TetrisEnv:
         self.game.newBlock()
         self.term = False
         self.ticks = 0
+        self.rotationCount = 0
+        self.score = 0
+        self.blocks_placed = 0
         return self.getState()
 
     def step(self, a):
         # Create new block if no block exists
         if self.game.currentBlock is None:
             self.game.newBlock()
+            self.rotationCount = 0 # reset rotation count for every block right
 
         if a == 'left': 
             self.game.moveLeft()
@@ -38,20 +45,26 @@ class TetrisEnv:
             self.game.moveRight()
         elif a == 'down':
             moved = self.game.moveDown()
+            self.score += 1
             if moved == False:
                 rowsCleared = self.game.clearRows() if hasattr(self.game, 'clearRows') else 0
                 if rowsCleared == 0:
                     self.currentCombo = 0
                 else:
                     self.currentCombo += 1
+                self.blocks_placed += 1
         elif a == 'rotateLeft':
             self.game.rotateLeft()
+            self.rotationCount += 1
         elif a == 'rotateRight':
             self.game.rotateRight()
+            self.rotationCount += 1
         elif a == 'rotateFlip':
             self.game.rotateFlip()
+            self.rotationCount += 1
         elif a == 'hardDrop':
-            self.game.hardDrop()
+            self.score += self.game.hardDrop()
+            self.blocks_placed += 1
 
         self.ticks += 1
         if self.ticks % self.gravity == 0:
@@ -89,21 +102,25 @@ class TetrisEnv:
         stdscr.refresh()
 
     def calculateReward(self):
-        # Clear rows and compute basic reward
-        rowsCleared = self.game.clearRows()
         reward = 0
 
+        rowsCleared = self.game.clearRows()
         if rowsCleared > 0:
+            reward += 10000
             self.currentCombo += 1
             reward += (rowsCleared ** 2) * 10 + self.currentCombo * 2
         else:
             self.currentCombo = 0
 
-        # Penalize based on height
-        max_height = self.game.checkColumnHeight()
-        reward -= max_height * 0.5  # Increase penalty magnitude
+        if self.rotationCount > 4:
+            reward -= 100
 
-        # Additional shaping (optional but helpful):
+        max_height = self.game.checkColumnHeight()
+        reward -= max_height * 5 
+
+        reward += self.score
+        reward += self.blocks_placed
+
         # holes = self.game.countHoles()
         # bumpiness = self.game.computeBumpiness()
         # reward -= holes * 1.0

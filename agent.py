@@ -75,7 +75,7 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
     ep_rewards = []
     for i in tqdm(range(num_interactions)):
         # USING GREEDY EPSILON
-        eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
+        # eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
         if rng.random() < eps: 
             action_idx = rng.integers(0, env.num_actions)
             action = env.actions[action_idx]
@@ -134,7 +134,7 @@ make sure it is in a terminal window sized adequately large or you will get erro
 """
 def main(stdscr):
     env = TetrisEnv(stdscr)
-    policy, rewards = train(env, lr=2e-4, num_interactions=10000)
+    policy, rewards = train(env, lr=2e-4, num_interactions=20000)
     print(rewards)
 
 if __name__ == "__main__":

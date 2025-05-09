@@ -380,9 +380,12 @@ class Tetris(GameBoard):
         print("cant rotate 180")
 
     def hardDrop(self):
+        distanceDropped = 0
         while self.canMove(self.currentBlock, self.currentBlock.x, self.currentBlock.y + 1):
             self.currentBlock.y +=1
+            distanceDropped += 1
         self.lockBlock()
+        return distanceDropped
         
 
 
