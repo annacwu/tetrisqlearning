@@ -263,10 +263,10 @@ class GameBoard:
 
                     # check boundaries
                     if boardX < 0 or boardX >= self.width:
-                        print('out of bounds')
+                        # print('out of bounds')
                         return False
                     if boardY < 0 or boardY >= self.totalHeight:
-                        print('at the top/bottom')
+                        # print('at the top/bottom')
                         return False
                     
                     # it already is a 1
@@ -313,15 +313,11 @@ class Tetris(GameBoard):
         if self.canMove(self.currentBlock, self.currentBlock.x + 1, self.currentBlock.y):
             self.currentBlock.x += 1
             self.drawBlock()
-        else: 
-            print('cant move right')
 
     def moveLeft(self):
         if self.canMove(self.currentBlock, self.currentBlock.x - 1, self.currentBlock.y):
             self.currentBlock.x -= 1
             self.drawBlock()
-        else: 
-            print('cant move left')
 
     def moveDown(self):
         if self.currentBlock is None:
@@ -331,7 +327,7 @@ class Tetris(GameBoard):
             self.drawBlock()
         else: 
             self.lockBlock()
-            print('cant move down')
+            # print('cant move down')
             return False
 
     def rotateLeft(self):
@@ -348,7 +344,7 @@ class Tetris(GameBoard):
                 self.currentBlock = newConfig
                 self.drawBlock()
                 return
-        print('cant rotate left')
+        # print('cant rotate left')
 
     def rotateRight(self):
         newConfig = self.currentBlock.clone()
@@ -363,7 +359,7 @@ class Tetris(GameBoard):
                 self.currentBlock = newConfig
                 self.drawBlock()
                 return
-        print('cant rotate right')
+        # print('cant rotate right')
 
     def rotateFlip(self):
         newConfig = self.currentBlock.clone()
@@ -378,7 +374,7 @@ class Tetris(GameBoard):
                 self.currentBlock = newConfig
                 self.drawBlock()
                 return
-        print("cant rotate 180")
+        # print("cant rotate 180")
 
     def hardDrop(self):
         distanceDropped = 0
@@ -491,7 +487,8 @@ def playGame(stdscr):
             if ticks % GRAVITY == 0:
                 game.moveDown()
 
-            time.sleep(0.05) # doesn't loop too fast
+            # time.sleep(0.05) 
+            # doesn't loop too fast
         if game_over_screen(stdscr, score):
             continue
         else:

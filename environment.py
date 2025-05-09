@@ -3,35 +3,38 @@ import numpy as np
 
 class TetrisEnv: 
     def __init__(self, stdscr=None):
+        self.stdscr = stdscr
+        self.gravity = 5
+        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
+        self.num_actions = len(self.actions)    
+        self.state_dim = 240 # because using active board now
+
+        self.reset_game_stuff()
+
         self.game = Tetris()
         self.state = None
         self.game.newBlock()
         self.term = False
-        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
-        self.num_actions = len(self.actions)
-        self.state_dim = 240 # because using active board now
-        self.gravity = 5
-        self.stdscr = stdscr
-
+        
+        
+    
+    # separate call for resetting per-game variables to make it easier
+    def reset_game_stuff(self):
         # dynamic reward properties
         self.score = 0 # implementing like how a basic tetris does. points for every cell moved down without gravity
         self.currentCombo = 0
         self.ticks = 0
         self.rotationCount = 0
-        self.blocks_placed = 0 # try and get it to place more blocks so it stops building towers
+        self.blocks_placed = 0 # try and get it to place more blocks so it stops building towers2
 
     def getState(self):
         return np.array(self.game.activeBoard).flatten()
     
     def reset(self):
+        self.reset_game_stuff()
         self.game = Tetris()
         self.game.newBlock()
         self.term = False
-        self.score = 0
-        self.currentCombo = 0
-        self.ticks = 0
-        self.rotationCount = 0
-        self.blocks_placed = 0
         return self.getState()
 
     def step(self, a):
@@ -40,6 +43,7 @@ class TetrisEnv:
             self.rotationCount = 0
             self.game.newBlock()
         
+        locked = False
         if a == 'left': 
             self.game.moveLeft()
         elif a == 'right':
@@ -47,13 +51,8 @@ class TetrisEnv:
         elif a == 'down':
             moved = self.game.moveDown()
             self.score += 1 # increase for moving down on purpose
-            if moved == False:
-                rowsCleared = self.game.clearRows() if hasattr(self.game, 'clearRows') else 0
-                if rowsCleared == 0:
-                    self.currentCombo = 0
-                else:
-                    self.currentCombo += 1
-                self.blocks_placed += 1
+            if not moved:
+                locked = True
         elif a == 'rotateLeft':
             self.game.rotateLeft()
             self.rotationCount += 1
@@ -64,8 +63,9 @@ class TetrisEnv:
             self.game.rotateFlip()
             self.rotationCount += 1
         elif a == 'hardDrop':
-            self.score += self.game.hardDrop() # add number of cells it moved down with the drop
+            dropped = self.game.hardDrop()
             self.blocks_placed += 1
+            locked = True
 
         # implementing gravity. i think this is working
         self.ticks += 1
@@ -75,14 +75,53 @@ class TetrisEnv:
         if self.game.checkTop():
             self.term = True
 
+        rowsCleared = 0
+        if locked:
+            rowsCleared = self.game.clearRows()
+            if rowsCleared > 0:
+                self.currentCombo += 1
+            else:
+                self.currentCombo = 0
+        
         # check if we have stdscr for rendering
         if self.stdscr: 
             self.render(self.stdscr)
 
-        reward = self.calculateReward()
+        reward = 0.0
+        if rowsCleared:
+            reward += ((rowsCleared * 1000) ** rowsCleared) + 0.5 * self.currentCombo
+        
+        if self.rotationCount > 4:
+            reward -= (self.rotationCount - 4) * 0.1
+        
+        max_height = self.game.checkColumnHeight()
+        reward -= 10 * max_height
+
+        holes = self.countHoles()
+        reward -= 0.2 * holes
+
+        # negative reward for taking extra time
+        reward -= 1
 
         return self.getState(), reward, self.term
 
+    def countHoles(self):
+        holes = 0
+        b = self.game.board
+        for column in range(self.game.width):
+            seen_block = False
+
+            for row in range(self.game.height):
+                cell = b[row][column]
+                
+                if cell == 1:
+                    seen_block = True
+                elif seen_block and cell == 0:
+                    holes += 1
+
+        return holes
+    
+    
     def getState(self):
         board = np.array(self.game.board).flatten()
         return board
@@ -118,7 +157,7 @@ class TetrisEnv:
 
         # penalize for too many rotations per block
         if self.rotationCount > 4:
-            reward -= 100
+            reward -= 100 * self.rotationCount
 
         # penalize for building towers hopefully. 
         # in theory this should make it learn to stay low
@@ -134,6 +173,11 @@ class TetrisEnv:
         # reward -= holes * 1.0
 
         return reward
+    
+    
+
+            
+
 
 
 

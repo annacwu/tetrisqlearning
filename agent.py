@@ -56,32 +56,49 @@ class ReplayMemory:
             self.oldest = 0
 
 
-def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 10000, eps=0.1):
+def train(env, 
+          gamma=0.99, 
+          lr=1e-3, 
+          tau=0.5, 
+          batch_size=128, 
+          num_interactions= 10000, 
+          eps=0.1, 
+          verbose=True,
+          render=False,
+          summary_window=50):
+    
+
     policy = QNetwork(env.state_dim, env.num_actions)
     target = QNetwork(env.state_dim, env.num_actions)
     target.load_state_dict(policy.state_dict())
 
     replay_buffer = ReplayMemory(10000)
 
-    opt = optim.Adam(policy.parameters(), lr=lr)
-    loss = nn.SmoothL1Loss() # look into if this is right?
+    opt           = optim.Adam(policy.parameters(), lr=lr)
+    loss          = nn.SmoothL1Loss() # look into if this is right?
 
-    rng = np.random.default_rng()
+    rng           = np.random.default_rng()
 
-    state = env.reset()
-    ep_r = 0
-    ep_rewards = []
-    for i in tqdm(range(num_interactions)):
+    state         = env.reset()
+    ep_r          = 0
+    ep_rewards    = []
+    
+    iterator      = tqdm(range(num_interactions)) if verbose else range(num_interactions)
+    
+    for step in iterator:
+        if render:
+            env.render()
+
+        
         # USING GREEDY EPSILON
 
         # NOTE for some reason doing it like it was below was making the score get worse?
         # eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
         if rng.random() < eps: 
             action_idx = rng.integers(0, env.num_actions)
-            action = env.actions[action_idx]
         else: 
             action_idx = policy(torch.tensor(state, dtype=torch.float)).argmax()
-            action = env.actions[action_idx]
+        action = env.actions[action_idx]
 
         nstate, reward, term = env.step(action)
         replay_buffer.push(state, action_idx, reward, nstate, term)
@@ -111,18 +128,44 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
             loss_val.backward()
             opt.step()
 
-        p_state_dict = policy.state_dict()
-        t_state_dict = target.state_dict()
-        for key in p_state_dict:
-            t_state_dict[key] = p_state_dict[key] * tau + t_state_dict[key] * (1 - tau)
-        target.load_state_dict(t_state_dict)
+
+            p_state_dict = policy.state_dict()
+            t_state_dict = target.state_dict()
+            for key in p_state_dict:
+                t_state_dict[key] = p_state_dict[key] * tau + t_state_dict[key] * (1 - tau)
+            target.load_state_dict(t_state_dict)
 
         if term: 
             ep_rewards.append(ep_r)
+            if verbose:
+                epi = len(ep_rewards)
+                print(f"Episode {epi:3d} - Reward: {ep_r:.2f}")
             state = env.reset()
             ep_r = 0
+        
+        if verbose:
+            if ep_rewards:
+                window = min(len(ep_rewards), summary_window)
+                avg_last = sum(ep_rewards[-window:]) / window
+                print(f"\nDone {len(ep_rewards)} episodes.  "
+                    f"Avg reward over last {window}: {avg_last:.2f}")
+            else:
+                print("\nNo complete episodes were recorded.")
 
     return policy, ep_rewards
+
+def evaluate(env: TetrisEnv, policy: QNetwork, episodes: 3, render_delay: 0.02):
+    for epi in range(1, episodes + 1):
+        state, done, total = env.reset(), False, 0.0
+        while not done:
+            with torch.no_grad():
+                logits = policy(torch.tensor(state, dtype=torch.float32))
+                act    = int(logits.argmax().item())
+            state, r, done = env.step(env.actions[act])
+            total += r
+            env.render(env.stdscr)
+            time.sleep(render_delay)
+        print(f"[Eval] Episode {epi}: {total:.2f}")
 
 # q_policy, q_returns = train(ENV, lr=2e-4, num_interactions=10000)
 # print(q_returns)
@@ -132,23 +175,23 @@ run this one if you want it to render in terminal
 using python3 -i agent.py
 make sure it is in a terminal window sized adequately large or you will get errors
 """
-def main(stdscr):
+def main(stdscr, policy: QNetwork):
     env = TetrisEnv(stdscr)
-    policy, rewards = train(env, lr=2e-4, num_interactions=20000)
-    print(rewards)
+    evaluate(env, policy, episodes=5, render_delay=0.05)
+    stdscr.addstr(0, 0, "Press any key to exit...")
+    stdscr.getch()
     
-#     # When training is done, you can optionally let it “play” one more game:
-#     obs = env.reset()  # you may need to add a reset() in TetrisEnv
-#     done = False
-#     while not done:
-#         # pick the greedy action from your learned policy
-#         with torch.no_grad():
-#             logits = policy(torch.tensor(obs).float().unsqueeze(0))
-#         act = logits.argmax(dim=1).item()
-#         obs, reward, done = env.step(env.actions[act])
-#         time.sleep(0.005)    # slow down so you can watch
-#     stdscr.getch()         # wait for a keypress before exiting
+    
 
 if __name__ == "__main__":
-    curses.wrapper(main) 
+    env, policy = TetrisEnv(), None
+    policy, rewards = train(
+        env,
+        lr=2e-4,
+        num_interactions=20_000,
+        verbose=True,   # suppress tqdm & prints
+        render=False     # never call env.render()
+    )
+    
+    curses.wrapper(main, policy)
 
