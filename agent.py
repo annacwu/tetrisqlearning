@@ -5,6 +5,7 @@ from torch import nn, optim
 from tqdm.notebook import tqdm
 import random
 import curses
+import time
 
 """ Uncomment this if you want to just run it without rendering """
 # ENV = TetrisEnv()
@@ -66,9 +67,6 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
     loss = nn.SmoothL1Loss() # look into if this is right?
 
     rng = np.random.default_rng()
-
-    eps_start = 1.0
-    eps_min = 0.05
 
     state = env.reset()
     ep_r = 0
@@ -136,6 +134,19 @@ def main(stdscr):
     env = TetrisEnv(stdscr)
     policy, rewards = train(env, lr=2e-4, num_interactions=20000)
     print(rewards)
+    
+#     # When training is done, you can optionally let it “play” one more game:
+#     obs = env.reset()  # you may need to add a reset() in TetrisEnv
+#     done = False
+#     while not done:
+#         # pick the greedy action from your learned policy
+#         with torch.no_grad():
+#             logits = policy(torch.tensor(obs).float().unsqueeze(0))
+#         act = logits.argmax(dim=1).item()
+#         obs, reward, done = env.step(env.actions[act])
+#         time.sleep(0.005)    # slow down so you can watch
+#     stdscr.getch()         # wait for a keypress before exiting
 
 if __name__ == "__main__":
     curses.wrapper(main) 
+

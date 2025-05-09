@@ -1,6 +1,7 @@
 from tetris import Tetris
 import numpy as np
 
+
 # NOTE: there is no gravity currently. need to implement that for actual tetris
 class TetrisEnv: 
     def __init__(self, stdscr=None):
@@ -36,9 +37,17 @@ class TetrisEnv:
     def step(self, a):
         # Create new block if no block exists
         if self.game.currentBlock is None:
+            self.rotationCount = 0
             self.game.newBlock()
             self.rotationCount = 0 # reset rotation count for every block right
 
+        if a in ('rotateLeft', 'rotateRight', 'rotateFlip'):
+            if self.rotationCount >= self.maxRotations:
+                rotation_penalty = self.rotation_penalty
+            else:
+                self.rotationCount += 1
+            getattr(self.game, a)()
+        
         if a == 'left': 
             self.game.moveLeft()
         elif a == 'right':
@@ -69,7 +78,7 @@ class TetrisEnv:
         self.ticks += 1
         if self.ticks % self.gravity == 0:
             self.game.moveDown()
-
+            
         if self.game.checkTop():
             self.term = True
 
