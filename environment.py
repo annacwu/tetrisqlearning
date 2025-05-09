@@ -6,19 +6,19 @@ import numpy as np
 class TetrisEnv: 
     def __init__(self, stdscr=None):
         self.game = Tetris()
-        self.score = 0
         self.state = None
         self.game.newBlock()
         self.term = False
         self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
         self.num_actions = len(self.actions)
         self.state_dim = 240 # because using active board now
+        self.score = 0 # implementing like how a basic tetris does. points for every cell moved down without gravity
         self.currentCombo = 0
-        self.stdscr = stdscr
-        self.stepPenalty = 0.01
-        self.rotation_penalty = 0.01
-        self.maxRotations = 4
+        self.ticks = 0
+        self.gravity = 5
         self.rotationCount = 0
+        self.stdscr = stdscr
+        self.blocks_placed = 0
 
     def getState(self):
         return np.array(self.game.activeBoard).flatten()
@@ -28,19 +28,18 @@ class TetrisEnv:
         self.currentCombo = 0
         self.game.newBlock()
         self.term = False
+        self.ticks = 0
+        self.rotationCount = 0
         self.score = 0
+        self.blocks_placed = 0
         return self.getState()
 
     def step(self, a):
-        # if they clear no rows, reward should still be -1
-        prev_score = self.score
-        rotation_penalty = 0.0
-        drop_bonus = 0.0
-
         # Create new block if no block exists
         if self.game.currentBlock is None:
             self.rotationCount = 0
             self.game.newBlock()
+            self.rotationCount = 0 # reset rotation count for every block right
 
         if a in ('rotateLeft', 'rotateRight', 'rotateFlip'):
             if self.rotationCount >= self.maxRotations:
@@ -55,36 +54,39 @@ class TetrisEnv:
             self.game.moveRight()
         elif a == 'down':
             moved = self.game.moveDown()
+            self.score += 1
             if moved == False:
-                rows = self.game.clearRows()
-                self.currentCombo = self.currentCombo + 1 if rows > 0 else 0
-                self.rotationCount = 0
-                self.game.newBlock()
+                rowsCleared = self.game.clearRows() if hasattr(self.game, 'clearRows') else 0
+                if rowsCleared == 0:
+                    self.currentCombo = 0
+                else:
+                    self.currentCombo += 1
+                self.blocks_placed += 1
+        elif a == 'rotateLeft':
+            self.game.rotateLeft()
+            self.rotationCount += 1
+        elif a == 'rotateRight':
+            self.game.rotateRight()
+            self.rotationCount += 1
+        elif a == 'rotateFlip':
+            self.game.rotateFlip()
+            self.rotationCount += 1
+        elif a == 'hardDrop':
+            self.score += self.game.hardDrop()
+            self.blocks_placed += 1
+
+        self.ticks += 1
+        if self.ticks % self.gravity == 0:
+            self.game.moveDown()
             
-
-        moved = self.game.moveDown()
-        if moved:
-            reward += 0.005
-
-        if not moved:
-            rows = self.game.clearRows()
-            if rows > 0:
-                self.currentCombo += 1
-            else:
-                self.currentCombo = 0
-            self.game.newBlock()
-        else:
-            rows = 0
-        
-        self.score += (rows + self.currentCombo) ** 2
-        reward = (self.score - prev_score) - self.stepPenalty
-        
         if self.game.checkTop():
             self.term = True
 
         # Check if we have stdscr for rendering
         if self.stdscr: 
             self.render(self.stdscr)
+
+        reward = self.calculateReward()
 
         return self.getState(), reward, self.term
 
@@ -107,6 +109,33 @@ class TetrisEnv:
         for i, line in enumerate(board_str):
             stdscr.addstr(start_y + i, start_x, line)
         stdscr.refresh()
+
+    def calculateReward(self):
+        reward = 0
+
+        rowsCleared = self.game.clearRows()
+        if rowsCleared > 0:
+            reward += 10000
+            self.currentCombo += 1
+            reward += (rowsCleared ** 2) * 10 + self.currentCombo * 2
+        else:
+            self.currentCombo = 0
+
+        if self.rotationCount > 4:
+            reward -= 100
+
+        max_height = self.game.checkColumnHeight()
+        reward -= max_height * 5 
+
+        reward += self.score
+        reward += self.blocks_placed
+
+        # holes = self.game.countHoles()
+        # bumpiness = self.game.computeBumpiness()
+        # reward -= holes * 1.0
+        # reward -= bumpiness * 0.5
+
+        return reward
 
     def terminal(self):
         pass

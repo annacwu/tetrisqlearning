@@ -244,7 +244,12 @@ class GameBoard:
             if cell != 0:
                 return True
         return False
-        
+
+    def checkColumnHeight(self):
+        for i, row in enumerate(self.board):
+            if any(cell == 1 for cell in row):
+                return self.height - i + self.hidden
+        return 0
         
     # input current block x and y + 1 in whichever direction you want to move
     def canMove(self, block, newX, newY):
@@ -375,6 +380,15 @@ class Tetris(GameBoard):
                 return
         print("cant rotate 180")
 
+    def hardDrop(self):
+        distanceDropped = 0
+        while self.canMove(self.currentBlock, self.currentBlock.x, self.currentBlock.y + 1):
+            self.currentBlock.y +=1
+            distanceDropped += 1
+        self.lockBlock()
+        return distanceDropped
+        
+
 
 def game_over_screen(stdscr, score):
     stdscr.clear()
@@ -417,6 +431,8 @@ def playGame(stdscr):
                 playing = False
                 break
 
+            game.checkColumnHeight()
+
             # basic system that attempts to increase scoring for bigger clears and longer combos
             score += (rowsCleared + currentCombo) ** 2 
             
@@ -439,6 +455,12 @@ def playGame(stdscr):
             # draw board on terminal
             for i, line in enumerate(board_str):
                 stdscr.addstr(start_y + i, start_x, line)
+
+             # Draw status info to the right of the board
+            info_x = start_x + game.width * 2 + 4  # padding to the right of board
+            stdscr.addstr(start_y, info_x, f"Score: {score}")
+            stdscr.addstr(start_y + 2, info_x, f"Column Height: {game.checkColumnHeight()}")
+
             stdscr.refresh()
 
             try:
@@ -458,6 +480,8 @@ def playGame(stdscr):
                 game.rotateFlip()
             elif key == ord('d'):
                 game.rotateRight()
+            elif key == ord(' '):
+                game.hardDrop()
             
             # we can stop the game now
             elif key == ord('p'):
