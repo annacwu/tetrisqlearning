@@ -73,6 +73,8 @@ def train(env, gamma=0.99, lr=1e-3, tau=0.5, batch_size=128, num_interactions= 1
     ep_rewards = []
     for i in tqdm(range(num_interactions)):
         # USING GREEDY EPSILON
+
+        # NOTE for some reason doing it like it was below was making the score get worse?
         # eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
         if rng.random() < eps: 
             action_idx = rng.integers(0, env.num_actions)

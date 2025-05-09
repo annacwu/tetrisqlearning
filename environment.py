@@ -1,8 +1,6 @@
 from tetris import Tetris
 import numpy as np
 
-
-# NOTE: there is no gravity currently. need to implement that for actual tetris
 class TetrisEnv: 
     def __init__(self, stdscr=None):
         self.game = Tetris()
@@ -12,25 +10,27 @@ class TetrisEnv:
         self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
         self.num_actions = len(self.actions)
         self.state_dim = 240 # because using active board now
+        self.gravity = 5
+        self.stdscr = stdscr
+
+        # dynamic reward properties
         self.score = 0 # implementing like how a basic tetris does. points for every cell moved down without gravity
         self.currentCombo = 0
         self.ticks = 0
-        self.gravity = 5
         self.rotationCount = 0
-        self.stdscr = stdscr
-        self.blocks_placed = 0
+        self.blocks_placed = 0 # try and get it to place more blocks so it stops building towers
 
     def getState(self):
         return np.array(self.game.activeBoard).flatten()
     
     def reset(self):
         self.game = Tetris()
-        self.currentCombo = 0
         self.game.newBlock()
         self.term = False
+        self.score = 0
+        self.currentCombo = 0
         self.ticks = 0
         self.rotationCount = 0
-        self.score = 0
         self.blocks_placed = 0
         return self.getState()
 
@@ -39,14 +39,6 @@ class TetrisEnv:
         if self.game.currentBlock is None:
             self.rotationCount = 0
             self.game.newBlock()
-            self.rotationCount = 0 # reset rotation count for every block right
-
-        if a in ('rotateLeft', 'rotateRight', 'rotateFlip'):
-            if self.rotationCount >= self.maxRotations:
-                rotation_penalty = self.rotation_penalty
-            else:
-                self.rotationCount += 1
-            getattr(self.game, a)()
         
         if a == 'left': 
             self.game.moveLeft()
@@ -54,7 +46,7 @@ class TetrisEnv:
             self.game.moveRight()
         elif a == 'down':
             moved = self.game.moveDown()
-            self.score += 1
+            self.score += 1 # increase for moving down on purpose
             if moved == False:
                 rowsCleared = self.game.clearRows() if hasattr(self.game, 'clearRows') else 0
                 if rowsCleared == 0:
@@ -67,14 +59,15 @@ class TetrisEnv:
             self.rotationCount += 1
         elif a == 'rotateRight':
             self.game.rotateRight()
-            self.rotationCount += 1
+            self.rotationCount += 1 # update rotation in here
         elif a == 'rotateFlip':
             self.game.rotateFlip()
             self.rotationCount += 1
         elif a == 'hardDrop':
-            self.score += self.game.hardDrop()
+            self.score += self.game.hardDrop() # add number of cells it moved down with the drop
             self.blocks_placed += 1
 
+        # implementing gravity. i think this is working
         self.ticks += 1
         if self.ticks % self.gravity == 0:
             self.game.moveDown()
@@ -82,7 +75,7 @@ class TetrisEnv:
         if self.game.checkTop():
             self.term = True
 
-        # Check if we have stdscr for rendering
+        # check if we have stdscr for rendering
         if self.stdscr: 
             self.render(self.stdscr)
 
@@ -110,9 +103,11 @@ class TetrisEnv:
             stdscr.addstr(start_y + i, start_x, line)
         stdscr.refresh()
 
+    # Moved here for increased readability
     def calculateReward(self):
         reward = 0
 
+        # if it clears a row we are ECSTATIC. it has never done this
         rowsCleared = self.game.clearRows()
         if rowsCleared > 0:
             reward += 10000
@@ -121,24 +116,24 @@ class TetrisEnv:
         else:
             self.currentCombo = 0
 
+        # penalize for too many rotations per block
         if self.rotationCount > 4:
             reward -= 100
 
+        # penalize for building towers hopefully. 
+        # in theory this should make it learn to stay low
         max_height = self.game.checkColumnHeight()
         reward -= max_height * 5 
 
+        # positive reinforcement for playing the game
         reward += self.score
         reward += self.blocks_placed
 
+        # things to maybe implement later to help it
         # holes = self.game.countHoles()
-        # bumpiness = self.game.computeBumpiness()
         # reward -= holes * 1.0
-        # reward -= bumpiness * 0.5
 
         return reward
-
-    def terminal(self):
-        pass
 
 
 
