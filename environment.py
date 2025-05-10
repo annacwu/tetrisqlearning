@@ -1,4 +1,5 @@
 from tetris import Tetris
+from tetris import BLOCKS
 import math
 import copy
 import numpy as np
@@ -7,19 +8,33 @@ class TetrisEnv:
     def __init__(self, stdscr=None, graphical=False):
         self.stdscr = stdscr
         self.graphical = graphical
-        self.gravity = 5
-        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
-        self.num_actions = len(self.actions)    
-        self.state_dim = 240 # because using active board now
-
-        self.reset_game_stuff()
-
         self.game = Tetris(graphical=self.graphical)
         self.state = None
         self.game.newBlock()
         self.term = False
+        self.gravity = 5
+        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
+        self.macro_actions = self.get_macro_actions()
+        self.num_actions = len(self.actions)    
+        self.num_macro_actions = len(self.macro_actions)
+        self.state_dim = 240 # because using active board now
+
+        self.reset_game_stuff()
+
+
         
-        
+    # new actions: place a block at a specific rotation in a chosen column
+    def get_macro_actions(self):
+        macro_actions = []
+        # for each of the 7 different blocks
+        for block_type in BLOCKS:
+            # get all possible rotations of the block
+            for rotation in range(len(BLOCKS[block_type])):
+                # and which column it can be in
+                for col in range(self.game.width):
+                    macro_actions.append((block_type, rotation, col))
+
+        return macro_actions
     
     # separate call for resetting per-game variables to make it easier
     def reset_game_stuff(self):
@@ -39,6 +54,49 @@ class TetrisEnv:
         self.game.newBlock()
         self.term = False
         return self.getState()
+
+    def macro_step(self, a):
+        block_type, rotation, col = a
+
+        if self.game.currentBlock is None:
+            self.game.newBlock()
+        if self.game.currentBlock.type != block_type:
+            return self.getState(), -1, self.term
+
+        # if valid action, do all the small steps at once
+        new_rotation = (rotation - self.game.currentBlock.rotation) % len(BLOCKS[block_type])
+        for _ in range(new_rotation):
+            self.game.rotateRight()
+
+        current_x = self.game.currentBlock.x
+        while current_x < col:
+            self.game.moveRight()
+            current_x += 1
+        while current_x > col: 
+            self.game.moveLeft()
+            current_x -= 1
+
+        dropped = self.game.hardDrop()
+        self.score += dropped
+        self.blocks_placed += 1
+
+        self.ticks += 1
+        if self.ticks % self.gravity == 0:
+            self.game.moveDown()
+        # do all of the rest of the step stuff
+        if self.game.checkTop():
+            self.term = True
+
+        reward = self.calculateReward(locked=True)
+
+        if self.graphical: 
+            self.game.render_pygame()
+
+        if self.stdscr: 
+            self.render(self.stdscr)
+
+        return self.getState(), reward, self.term
+
 
     def step(self, a):
         # Create new block if no block exists
@@ -80,52 +138,15 @@ class TetrisEnv:
         if self.game.checkTop():
             self.term = True
 
-        rowsCleared = 0
-        if locked:
-            rowsCleared = self.game.clearRows()
-            if rowsCleared > 0:
-                self.currentCombo += 1
-            else:
-                self.currentCombo = 0
-        
         if self.graphical:
             self.game.render_pygame()
 
         if self.stdscr: 
             self.render(self.stdscr)
 
-        reward = 0.0
-        if rowsCleared:
-            reward += rowsCleared * 500 + 10 * self.currentCombo
-        else: 
-            reward += 1
-        
-        if self.rotationCount > 4:
-            reward -= 20
-        
-        max_height = self.game.checkColumnHeight()
-        if max_height > 8:
-            reward -= 10 * (max_height - 8)
-
-        gaps = self.countRowGaps()
-        reward -= gaps * 5
-
-        holes = self.countHoles()
-        reward -= 5 * holes
-
-        breadth = self.checkBreadth()
-        reward += breadth * 10
-
-        reward -= self.columnHeightVariance() * 3
-
-        
-        previous_board = copy.deepcopy(self.game.board)
-        flush_bonus = self.flushContacts(previous_board)
-        reward += flush_bonus * 100 
-        
-
-        reward += self.score
-
+        reward = -0.1
+        if locked:
+            reward = self.calculateReward(locked)
 
         return self.getState(), reward, self.term
         
@@ -224,41 +245,44 @@ class TetrisEnv:
         stdscr.refresh()
 
     # Moved here for increased readability
-    def calculateReward(self):
+    def calculateReward(self, locked):
         reward = 0
+        rowsCleared = 0
+        if locked:
+            rowsCleared = self.game.clearRows()
+            if rowsCleared > 0:
+                self.currentCombo += 1
+            else:
+                self.currentCombo = 0
+        
 
-        # if it clears a row we are ECSTATIC. it has never done this
-        rowsCleared = self.game.clearRows()
-        if rowsCleared > 0:
-            reward += 10000
-            self.currentCombo += 1
-            reward += (rowsCleared ** 2) * 10 + self.currentCombo * 2
-        else:
-            self.currentCombo = 0
-
-        # penalize for too many rotations per block
+        if rowsCleared:
+            reward += (rowsCleared ** 2) * 1.5 + self.currentCombo
+        
         if self.rotationCount > 4:
-            reward -= 100 * self.rotationCount
-
-        # penalize for building towers hopefully. 
-        # in theory this should make it learn to stay low
+            reward -= 20
+        
         max_height = self.game.checkColumnHeight()
-        reward -= max_height * 5 
+        reward -= max_height ** 2
 
-        # positive reinforcement for playing the game
+        gaps = self.countRowGaps()
+        reward -= gaps * 5
+
+        holes = self.countHoles()
+        reward -= 5 * holes
+
+        breadth = self.checkBreadth()
+        reward += breadth * 10
+
+        reward -= self.columnHeightVariance() * 3
+
+        
+        previous_board = copy.deepcopy(self.game.board)
+        flush_bonus = self.flushContacts(previous_board)
+        reward += flush_bonus * 100 
+        
+
         reward += self.score
-        reward += self.blocks_placed
-
-        # things to maybe implement later to help it
-        # holes = self.game.countHoles()
-        # reward -= holes * 1.0
-
         return reward
-    
-    
-
-            
-
-
 
 

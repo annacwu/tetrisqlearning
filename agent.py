@@ -69,8 +69,8 @@ def train(env,
           summary_window=50):
     
 
-    policy = QNetwork(env.state_dim, env.num_actions)
-    target = QNetwork(env.state_dim, env.num_actions)
+    policy = QNetwork(env.state_dim, env.num_macro_actions)
+    target = QNetwork(env.state_dim, env.num_macro_actions)
     target.load_state_dict(policy.state_dict())
 
     replay_buffer = ReplayMemory(10000)
@@ -96,12 +96,12 @@ def train(env,
         # NOTE for some reason doing it like it was below was making the score get worse?
         # eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
         if rng.random() < eps: 
-            action_idx = rng.integers(0, env.num_actions)
+            action_idx = rng.integers(0, env.num_macro_actions)
         else: 
             action_idx = policy(torch.tensor(state, dtype=torch.float)).argmax()
-        action = env.actions[action_idx]
+        action = env.macro_actions[action_idx]
 
-        nstate, reward, term = env.step(action)
+        nstate, reward, term = env.macro_step(action)
         replay_buffer.push(state, action_idx, reward, nstate, term)
         state = nstate
         ep_r += reward
@@ -176,10 +176,10 @@ def evaluate_pygame(policy: QNetwork, episodes=3, render_delay=0.02):
             with torch.no_grad():
                 logits = policy(torch.tensor(state, dtype=torch.float32))
                 act = int(logits.argmax().item())
-            state, r, done = env.step(env.actions[act])
+            state, r, done = env.macro_step(env.macro_actions[act])
             total += r
             env.game.render_pygame()
-            pygame.time.wait(int(render_delay * 1000))
+            pygame.time.wait(int(render_delay))
         print(f"[Eval] Episode {epi}: {total:.2f}")
     
     input("Press Enter to quit...")
@@ -191,14 +191,14 @@ make sure it is in a terminal window sized adequately large or you will get erro
 """
 def main(stdscr, policy: QNetwork):
     env = TetrisEnv(graphical=True)
-    evaluate(env, policy, episodes=5, render_delay=0.05)
-    stdscr.addstr(0, 0, "Press any key to exit...")
-    stdscr.getch()
+    # evaluate(env, policy, episodes=5, render_delay=0.05)
+    # stdscr.addstr(0, 0, "Press any key to exit...")
+    # stdscr.getch()
     
     
 
 if __name__ == "__main__":
-    env, policy = TetrisEnv(), None
+    env, policy = TetrisEnv(graphical=True), None
     policy, rewards = train(
         env,
         lr=2e-4,
@@ -206,7 +206,8 @@ if __name__ == "__main__":
         verbose=True,   # suppress tqdm & prints
         render=False     # never call env.render()
     )
+    print(rewards)
     
     # curses.wrapper(main, policy)
-    evaluate_pygame(policy, episodes=5, render_delay=0.05)
+    # evaluate_pygame(policy, episodes=5, render_delay=0.05)
 
