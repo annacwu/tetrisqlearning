@@ -238,7 +238,7 @@ class GameBoard:
         random.shuffle(self.blocks)
         self.currentBlock = Block(self.blocks[0])
         self.blocks.pop(0)
-        self.currentBlock.y = self.hidden
+        self.currentBlock.y = self.hidden - 1
         self.drawBlock()
         
     def clearRows(self):
