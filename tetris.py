@@ -214,6 +214,7 @@ class GameBoard:
         if graphical: 
             self.block_size = 16  # size of each block in pixels
             self.screen = pygame.display.set_mode((self.width * self.block_size, self.height * self.block_size))
+            pygame.init()
 
         for _ in range(self.totalHeight):
             row = [0] * width

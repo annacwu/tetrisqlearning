@@ -75,18 +75,19 @@ def train(env,
 
     replay_buffer = ReplayMemory(10000)
 
-    opt           = optim.Adam(policy.parameters(), lr=lr)
-    loss          = nn.SmoothL1Loss() # look into if this is right?
+    opt = optim.Adam(policy.parameters(), lr=lr)
+    loss = nn.SmoothL1Loss() # look into if this is right?
 
-    rng           = np.random.default_rng()
+    rng = np.random.default_rng()
 
-    state         = env.reset()
-    ep_r          = 0
-    ep_rewards    = []
+    state = env.reset()
+    ep_r = 0
+    ep_rewards = []
+
+    # eps_start = 1.0
+    # eps_min = 0.05
     
-    iterator      = tqdm(range(num_interactions)) if verbose else range(num_interactions)
-    
-    for step in iterator:
+    for i in tqdm(range(num_interactions)):
         if render:
             env.render()
 
@@ -168,20 +169,25 @@ def evaluate(env: TetrisEnv, policy: QNetwork, episodes: 3, render_delay: 0.02):
             time.sleep(render_delay)
         print(f"[Eval] Episode {epi}: {total:.2f}")
 
-def evaluate_pygame(policy: QNetwork, episodes=3, render_delay=0.02):
+def evaluate_pygame(policy: QNetwork, episodes=3, render_delay=0.05):
     env = TetrisEnv(graphical=True)
     for epi in range(1, episodes + 1):
-        state, done, total = env.reset(), False, 0.0
+        state = env.reset()
+        done, total = False, 0.0
+
         while not done:
             with torch.no_grad():
                 logits = policy(torch.tensor(state, dtype=torch.float32))
                 act = int(logits.argmax().item())
+
             state, r, done = env.macro_step(env.macro_actions[act])
             total += r
+
             env.game.render_pygame()
-            pygame.time.wait(int(render_delay))
+            pygame.event.pump() 
+
         print(f"[Eval] Episode {epi}: {total:.2f}")
-    
+
     input("Press Enter to quit...")
     pygame.quit()
 """
@@ -202,12 +208,15 @@ if __name__ == "__main__":
     policy, rewards = train(
         env,
         lr=2e-4,
-        num_interactions=20_000,
+        num_interactions=30000,
         verbose=True,   # suppress tqdm & prints
         render=False     # never call env.render()
     )
     print(rewards)
+
+    pygame.quit()
     
     # curses.wrapper(main, policy)
-    # evaluate_pygame(policy, episodes=5, render_delay=0.05)
+    #evaluate_pygame(policy, episodes=3, render_delay=0.1)
+    print("evaluated")
 

@@ -63,6 +63,8 @@ class TetrisEnv:
         if self.game.currentBlock.type != block_type:
             return self.getState(), -1, self.term
 
+        previous_board = copy.deepcopy(self.game.board)
+
         # if valid action, do all the small steps at once
         new_rotation = (rotation - self.game.currentBlock.rotation) % len(BLOCKS[block_type])
         for _ in range(new_rotation):
@@ -87,7 +89,8 @@ class TetrisEnv:
         if self.game.checkTop():
             self.term = True
 
-        reward = self.calculateReward(locked=True)
+        locked = True
+        reward = self.calculateReward(locked, previous_board)
 
         if self.graphical: 
             self.game.render_pygame()
@@ -159,8 +162,12 @@ class TetrisEnv:
 
                 if cell == 1:
                     seen_block = True
-                elif seen_block and cell == 0:
-                    gaps += 1
+            if seen_block:
+                for column in range(self.game.width):
+                    cell = self.game.board[row][column]
+
+                    if cell == 0:
+                        gaps += 1
         return gaps
 
     def countHoles(self):
@@ -245,7 +252,7 @@ class TetrisEnv:
         stdscr.refresh()
 
     # Moved here for increased readability
-    def calculateReward(self, locked):
+    def calculateReward(self, locked, previous):
         reward = 0
         rowsCleared = 0
         if locked:
@@ -257,32 +264,33 @@ class TetrisEnv:
         
 
         if rowsCleared:
-            reward += (rowsCleared ** 2) * 1.5 + self.currentCombo
+            #reward += (rowsCleared ** 2) * 50 + self.currentCombo
+            reward += 100000
         
         if self.rotationCount > 4:
-            reward -= 20
+            reward -= 10
         
         max_height = self.game.checkColumnHeight()
         reward -= max_height ** 2
 
         gaps = self.countRowGaps()
-        reward -= gaps * 5
+        reward -= gaps  
 
         holes = self.countHoles()
-        reward -= 5 * holes
+        reward -= holes
 
         breadth = self.checkBreadth()
-        reward += breadth * 10
+        reward += breadth * 100 
 
-        reward -= self.columnHeightVariance() * 3
+        reward -= int(self.columnHeightVariance()) * 5
 
+        reward += self.blocks_placed * 5
         
-        previous_board = copy.deepcopy(self.game.board)
-        flush_bonus = self.flushContacts(previous_board)
-        reward += flush_bonus * 100 
+        flush_bonus = self.flushContacts(previous)
+        reward += flush_bonus * 10
         
 
-        reward += self.score
+        reward += self.score 
         return reward
 
 
