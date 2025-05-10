@@ -94,6 +94,7 @@ def train(env,
 
         # NOTE for some reason doing it like it was below was making the score get worse?
         # eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
+        action_idx = 0
         if rng.random() < eps: 
             action_idx = rng.integers(0, env.num_actions)
         else: 

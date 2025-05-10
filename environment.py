@@ -53,6 +53,7 @@ class TetrisEnv:
             self.score += 1 # increase for moving down on purpose
             if not moved:
                 locked = True
+                self.blocks_placed += 1
         elif a == 'rotateLeft':
             self.game.rotateLeft()
             self.rotationCount += 1
@@ -100,8 +101,11 @@ class TetrisEnv:
         holes = self.countHoles()
         reward -= 0.2 * holes
 
-        # negative reward for taking extra time
-        reward -= 1
+        breadth = self.checkBreadth()
+        reward += breadth * 10
+
+        # reward += self.blocks_placed * 5
+
 
         return self.getState(), reward, self.term
 
@@ -120,6 +124,22 @@ class TetrisEnv:
                     holes += 1
 
         return holes
+
+    def checkBreadth(self):
+        breadth = 0
+        intensity = 10
+        for row in range(self.game.height):
+            num_1s = 0
+            for column in range(self.game.width):
+                cell = self.game.board[row][column]
+
+                if cell == 1:
+                    num_1s += 1
+            breadth += num_1s * intensity
+            intensity // 2
+
+        return breadth
+                
     
     
     def getState(self):
