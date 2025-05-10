@@ -1,9 +1,19 @@
 import random
+import pygame
 import curses
 import time
 
-BLOCK_TYPES = ['O', 'L', 'J', 'I', 'T', 'Z', 'S']
+BLOCK_TYPES = [1, 2, 3, 4, 5, 6, 7]
 
+BLOCK_COLORS = {
+    1: (255, 255, 0),  # Yellow
+    2: (0, 255, 255),  # Cyan
+    3: (128, 0, 128),  # Purple
+    4: (255, 165, 0),  # Orange
+    5: (0, 0, 255),    # Blue
+    6: (0, 255, 0),    # Green
+    7: (255, 0, 0)     # Red
+}
 # while playing i have a game tick set up, and gravity will be 
 # move down if ticks % gravity == 0; higher gravity is slower 
 GRAVITY = 5
@@ -11,7 +21,7 @@ GRAVITY = 5
 REPLAY = True
 
 BLOCKS = {
-    "O": [
+    1: [
         [
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -19,7 +29,7 @@ BLOCKS = {
             [0, 1, 1, 0]
         ]
     ],
-    "I": [
+    2: [
         # Vertical – occupies all four rows so no extra empty rows can be added at the top.
         [
             [0, 0, 1, 0],
@@ -35,7 +45,7 @@ BLOCKS = {
             [1, 1, 1, 1]
         ]
     ],
-    "T": [
+    3: [
         # Rotation 0 (spawn state)
         [
             [0, 0, 0, 0],
@@ -65,7 +75,7 @@ BLOCKS = {
             [0, 1, 0, 0]
         ]
     ],
-    "L": [
+    4: [
         # L spawn – vertical with extra block on the bottom right.
         [
             [0, 0, 0, 0],
@@ -95,7 +105,7 @@ BLOCKS = {
             [0, 1, 1, 1]
         ]
     ],
-    "J": [
+    5: [
         # J spawn – mirror image of L spawn.
         [
             [0, 0, 0, 0],
@@ -125,7 +135,7 @@ BLOCKS = {
             [0, 0, 0, 1]
         ]
     ],
-    "S": [
+    6: [
         # S spawn.
         [
             [0, 0, 0, 0],
@@ -141,7 +151,7 @@ BLOCKS = {
             [1, 0, 0, 0]
         ]
     ],
-    "Z": [
+    7: [
         # Z spawn.
         [
             [0, 0, 0, 0],
@@ -189,7 +199,7 @@ class Block:
 
 class GameBoard:
 
-    def __init__(self, height = 20, width = 10, padding = 4): # initialized to standard tetris board size plus padding
+    def __init__(self, height = 20, width = 10, padding = 4, graphical=False): # initialized to standard tetris board size plus padding
         self.height = height
         self.width = width 
         self.hidden = padding
@@ -200,6 +210,10 @@ class GameBoard:
         self.currentBlock = None
         self.blocks = BLOCK_TYPES[:]
         self.active = False # for determining which board to show
+
+        if graphical: 
+            self.block_size = 16  # size of each block in pixels
+            self.screen = pygame.display.set_mode((self.width * self.block_size, self.height * self.block_size))
 
         for _ in range(self.totalHeight):
             row = [0] * width
@@ -229,7 +243,7 @@ class GameBoard:
         
     def clearRows(self):
         visible_board = self.board[self.hidden:]
-        updated_visible = [row for row in visible_board if not all(cell == 1 for cell in row)]
+        updated_visible = [row for row in visible_board if not all(cell != 0 for cell in row)]
         rowsCleared = len(visible_board) - len(updated_visible)
         
 
@@ -247,7 +261,7 @@ class GameBoard:
 
     def checkColumnHeight(self):
         for i, row in enumerate(self.board):
-            if any(cell == 1 for cell in row):
+            if any(cell != 0 for cell in row):
                 return self.height - i + self.hidden
         return 0
         
@@ -269,8 +283,8 @@ class GameBoard:
                         # print('at the top/bottom')
                         return False
                     
-                    # it already is a 1
-                    if self.board[boardY][boardX] == 1: 
+                    # it already is something
+                    if self.board[boardY][boardX] != 0: 
                             return False
         return True
 
@@ -286,7 +300,7 @@ class GameBoard:
                     x = self.currentBlock.x + j
                     y = self.currentBlock.y + i
                     if 0 <= y < self.totalHeight and 0 <= x < self.width:
-                        self.activeBoard[y][x] = 1
+                        self.activeBoard[y][x] = self.currentBlock.type
 
     def lockBlock(self):
         self.active = False
@@ -296,15 +310,53 @@ class GameBoard:
                     boardX = self.currentBlock.x + i
                     boardY = self.currentBlock.y + j
                     if 0 <= boardY < self.totalHeight and 0 <= boardX < self.width:
-                        self.board[boardY][boardX] = 1
+                        self.board[boardY][boardX] = self.currentBlock.type
         self.currentBlock = None
+
+    def render_pygame(self):
+        # Fill the screen with a background color
+        self.screen.fill((0, 0, 0))  # Black background
+        
+        # Draw the current board state
+        for row in range(self.hidden, self.totalHeight):
+            for col in range(self.width):
+                block_type = self.board[row][col]
+                if block_type != 0:
+                    color = BLOCK_COLORS.get(block_type, (255, 255, 255))
+                else: 
+                    color = (0,0,0)
+                
+                pygame.draw.rect(
+                        self.screen, 
+                        color,
+                        (col * self.block_size,
+                         (row - self.hidden) * self.block_size, 
+                         self.block_size, self.block_size))
+        
+        # Draw the current block
+        if self.currentBlock:
+            block_color = BLOCK_COLORS[self.currentBlock.type]  # Color based on block type
+            for i in range(4):
+                for j in range(4):
+                    if self.currentBlock.block[i][j]:  # If there is a block in this position
+                        x = self.currentBlock.x + j
+                        y = self.currentBlock.y + i
+                        if 0 <= x < self.width and 0 <= y < self.totalHeight:  # Ensure it's within bounds
+                            pygame.draw.rect(
+                                    self.screen, 
+                                    block_color,
+                                    (x * self.block_size, 
+                                     (y - self.hidden) * self.block_size, 
+                                     self.block_size, self.block_size))
+
+        pygame.display.update()  # Update the display to show the changes
 
 
 class Tetris(GameBoard): 
     score = 0
 
-    def __init__(self, height=20, width=10, padding=4):
-        super().__init__(height, width, padding)
+    def __init__(self, height=20, width=10, padding=4, graphical=False):
+        super().__init__(height, width, padding, graphical)
 
     def increaseScore(self, value):
         self.score += value

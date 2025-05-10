@@ -1,9 +1,12 @@
 from tetris import Tetris
+import math
+import copy
 import numpy as np
 
 class TetrisEnv: 
-    def __init__(self, stdscr=None):
+    def __init__(self, stdscr=None, graphical=False):
         self.stdscr = stdscr
+        self.graphical = graphical
         self.gravity = 5
         self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
         self.num_actions = len(self.actions)    
@@ -11,7 +14,7 @@ class TetrisEnv:
 
         self.reset_game_stuff()
 
-        self.game = Tetris()
+        self.game = Tetris(graphical=self.graphical)
         self.state = None
         self.game.newBlock()
         self.term = False
@@ -32,7 +35,7 @@ class TetrisEnv:
     
     def reset(self):
         self.reset_game_stuff()
-        self.game = Tetris()
+        self.game = Tetris(graphical=self.graphical)
         self.game.newBlock()
         self.term = False
         return self.getState()
@@ -65,6 +68,7 @@ class TetrisEnv:
             self.rotationCount += 1
         elif a == 'hardDrop':
             dropped = self.game.hardDrop()
+            self.score += dropped
             self.blocks_placed += 1
             locked = True
 
@@ -84,30 +88,59 @@ class TetrisEnv:
             else:
                 self.currentCombo = 0
         
-        # check if we have stdscr for rendering
+        if self.graphical:
+            self.game.render_pygame()
+
         if self.stdscr: 
             self.render(self.stdscr)
 
         reward = 0.0
         if rowsCleared:
-            reward += ((rowsCleared * 1000) ** rowsCleared) + 0.5 * self.currentCombo
+            reward += rowsCleared * 500 + 10 * self.currentCombo
+        else: 
+            reward += 1
         
         if self.rotationCount > 4:
-            reward -= (self.rotationCount - 4) * 0.1
+            reward -= 20
         
         max_height = self.game.checkColumnHeight()
-        reward -= 10 * max_height
+        if max_height > 8:
+            reward -= 10 * (max_height - 8)
+
+        gaps = self.countRowGaps()
+        reward -= gaps * 5
 
         holes = self.countHoles()
-        reward -= 0.2 * holes
+        reward -= 5 * holes
 
         breadth = self.checkBreadth()
         reward += breadth * 10
 
-        # reward += self.blocks_placed * 5
+        reward -= self.columnHeightVariance() * 3
+
+        
+        previous_board = copy.deepcopy(self.game.board)
+        flush_bonus = self.flushContacts(previous_board)
+        reward += flush_bonus * 100 
+        
+
+        reward += self.score
 
 
         return self.getState(), reward, self.term
+        
+    def countRowGaps(self):
+        gaps = 0
+        for row in range(self.game.height): 
+            seen_block = False
+            for column in range(self.game.width):
+                cell = self.game.board[row][column]
+
+                if cell == 1:
+                    seen_block = True
+                elif seen_block and cell == 0:
+                    gaps += 1
+        return gaps
 
     def countHoles(self):
         holes = 0
@@ -124,22 +157,50 @@ class TetrisEnv:
                     holes += 1
 
         return holes
+    
+    def columnHeights(self):
+        heights = [0] * self.game.width
+        for x in range(self.game.width):
+            for y in range(self.game.height):
+                if self.game.board[y][x] == 1:
+                    heights[x] = self.game.height - y
+                    break  # stop at first filled cell (top of stack)
+        return heights
+
+    def columnHeightVariance(self):
+        heights = self.columnHeights()
+        mean = sum(heights) / len(heights)
+        variance = sum((h - mean) ** 2 for h in heights) / len(heights)
+        return math.sqrt(variance)  # return std deviation
 
     def checkBreadth(self):
-        breadth = 0
-        intensity = 10
-        for row in range(self.game.height):
-            num_1s = 0
-            for column in range(self.game.width):
-                cell = self.game.board[row][column]
+        total_filled = 0
+        total_cells = 0
+        for row in self.game.board[self.game.hidden:]:
+            total_filled += sum(1 for cell in row if cell == 1)
+            total_cells += len(row)
+        occupancy_ratio = total_filled / total_cells if total_cells > 0 else 0
+        return occupancy_ratio
 
-                if cell == 1:
-                    num_1s += 1
-            breadth += num_1s * intensity
-            intensity // 2
+    def flushContacts(self, previous_board):
+        b = self.game.board
+        contacts = 0
 
-        return breadth
-                
+        for y in range(self.game.height):
+            for x in range(self.game.width):
+                # detect newly placed block cells
+                if b[y][x] == 1 and previous_board[y][x] == 0:
+                    # count flush neighbors (left, right, up, down)
+                    for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < self.game.width and 0 <= ny < self.game.height:
+                            if b[ny][nx] == 1:
+                                contacts += 1
+
+                    # ground or closest level contact bonus
+                    if y == self.game.height - 1 or b[y + 1][x] == 1:
+                        contacts += 1
+        return contacts
     
     
     def getState(self):

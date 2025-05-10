@@ -6,6 +6,7 @@ from tqdm.notebook import tqdm
 import random
 import curses
 import time
+import pygame
 
 """ Uncomment this if you want to just run it without rendering """
 # ENV = TetrisEnv()
@@ -94,7 +95,6 @@ def train(env,
 
         # NOTE for some reason doing it like it was below was making the score get worse?
         # eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
-        action_idx = 0
         if rng.random() < eps: 
             action_idx = rng.integers(0, env.num_actions)
         else: 
@@ -168,16 +168,29 @@ def evaluate(env: TetrisEnv, policy: QNetwork, episodes: 3, render_delay: 0.02):
             time.sleep(render_delay)
         print(f"[Eval] Episode {epi}: {total:.2f}")
 
-# q_policy, q_returns = train(ENV, lr=2e-4, num_interactions=10000)
-# print(q_returns)
-
+def evaluate_pygame(policy: QNetwork, episodes=3, render_delay=0.02):
+    env = TetrisEnv(graphical=True)
+    for epi in range(1, episodes + 1):
+        state, done, total = env.reset(), False, 0.0
+        while not done:
+            with torch.no_grad():
+                logits = policy(torch.tensor(state, dtype=torch.float32))
+                act = int(logits.argmax().item())
+            state, r, done = env.step(env.actions[act])
+            total += r
+            env.game.render_pygame()
+            pygame.time.wait(int(render_delay * 1000))
+        print(f"[Eval] Episode {epi}: {total:.2f}")
+    
+    input("Press Enter to quit...")
+    pygame.quit()
 """
 run this one if you want it to render in terminal
 using python3 -i agent.py
 make sure it is in a terminal window sized adequately large or you will get errors
 """
 def main(stdscr, policy: QNetwork):
-    env = TetrisEnv(stdscr)
+    env = TetrisEnv(graphical=True)
     evaluate(env, policy, episodes=5, render_delay=0.05)
     stdscr.addstr(0, 0, "Press any key to exit...")
     stdscr.getch()
@@ -194,5 +207,6 @@ if __name__ == "__main__":
         render=False     # never call env.render()
     )
     
-    curses.wrapper(main, policy)
+    # curses.wrapper(main, policy)
+    evaluate_pygame(policy, episodes=5, render_delay=0.05)
 
