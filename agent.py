@@ -16,11 +16,13 @@ class QNetwork(nn.Module):
     def __init__(self, state_dim, num_actions):
         super().__init__()
         self.model = nn.Sequential(
-            nn.Linear(state_dim, 20),
+            nn.Linear(state_dim, 128),
             nn.ReLU(),
-            nn.Linear(20, 20),
+            nn.Linear(128, 128),
             nn.ReLU(),
-            nn.Linear(20, num_actions)
+            nn.Linear(128, 64),
+            nn.ReLU(),            
+            nn.Linear(64, num_actions)
         )
     
     def forward(self, x):
@@ -208,7 +210,7 @@ if __name__ == "__main__":
     policy, rewards = train(
         env,
         lr=2e-4,
-        num_interactions=30000,
+        num_interactions=40000,
         verbose=True,   # suppress tqdm & prints
         render=False     # never call env.render()
     )
@@ -218,5 +220,4 @@ if __name__ == "__main__":
     
     # curses.wrapper(main, policy)
     #evaluate_pygame(policy, episodes=3, render_delay=0.1)
-    print("evaluated")
 
