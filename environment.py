@@ -210,6 +210,14 @@ class TetrisEnv:
                 bonus += filled  # encourage near-full rows
         return bonus
 
+    def nearFullRows(self):
+        count = 0
+        for row in self.game.board[self.game.hidden:]:
+            filled = sum(1 for cell in row if cell != 0)
+            if filled >= self.game.width - 2:
+                count += 1
+        return count
+
     def flushContacts(self, previous_board):
         b = self.game.board
         contacts = 0
@@ -261,33 +269,36 @@ class TetrisEnv:
             rowsCleared = self.game.clearRows()
             if rowsCleared > 0:
                 self.currentCombo += 1
-                reward += 100000
+                print("ROW CLEARED !!!!!!!!!!!!!!!!!!!! ")
             else:
                 self.currentCombo = 0
         
-        reward += rowsCleared * 100        
+        reward += rowsCleared * 20000        
         reward += self.currentCombo * 10
         
         max_height = self.game.checkColumnHeight()
         reward -= max_height * 2 
 
         gaps = self.countRowGaps()
-        reward -= gaps * 1.5  
+        reward -= gaps   
 
         reward -= int(self.columnHeightVariance()) * 1.5
-        #holes = self.countHoles()
-        #reward -= holes
+
+        holes = self.countHoles()
+        reward -= holes
 
         breadth = self.checkBreadth()
-        reward += breadth * 20 
+        reward += breadth * 100 
 
         reward += self.blocks_placed 
         
         flush_bonus = self.flushContacts(previous)
         reward += flush_bonus * 5
-        
+
+        reward += self.nearFullRows() * 100
 
         reward += self.score 
+
         return reward
 
 

@@ -147,14 +147,14 @@ def train(env,
             state = env.reset()
             ep_r = 0
         
-        if verbose:
-            if ep_rewards:
-                window = min(len(ep_rewards), summary_window)
-                avg_last = sum(ep_rewards[-window:]) / window
-                print(f"\nDone {len(ep_rewards)} episodes.  "
-                    f"Avg reward over last {window}: {avg_last:.2f}")
-            else:
-                print("\nNo complete episodes were recorded.")
+        #if verbose:
+        #    if ep_rewards:
+        #        window = min(len(ep_rewards), summary_window)
+        #        avg_last = sum(ep_rewards[-window:]) / window
+        #        print(f"\nDone {len(ep_rewards)} episodes.  "
+        #            f"Avg reward over last {window}: {avg_last:.2f}")
+        #    else:
+        #        print("\nNo complete episodes were recorded.")
 
     return policy, ep_rewards
 
@@ -214,7 +214,6 @@ if __name__ == "__main__":
         verbose=True,   # suppress tqdm & prints
         render=False     # never call env.render()
     )
-    print(rewards)
 
     pygame.quit()
     
