@@ -196,7 +196,7 @@ class Block:
         return new_block
             
     
-# set up the board and define methods that handle interaction between board and blocks
+"""set up the board and define methods that handle interaction between board and blocks"""
 class GameBoard:
     
     # initialized to standard tetris board size plus padding
@@ -204,11 +204,11 @@ class GameBoard:
         self.height = height
         self.width = width 
         self.hidden = padding
-        self.totalHeight = height + padding
+        self.total_height = height + padding
 
         self.board = [] # board will be represented as 2d array (matrix)
-        self.activeBoard = [] # this is the temporary board where we do the block rotation actions and stuff and check bounds
-        self.currentBlock = None
+        self.active_board = [] # this is the temporary board where we do the block rotation actions and stuff and check bounds
+        self.current_block = None
         self.blocks = BLOCK_TYPES[:]
         self.active = False # for determining which board to show
 
@@ -219,34 +219,34 @@ class GameBoard:
             pygame.init()
 
         # make boards with given sizes
-        for _ in range(self.totalHeight):
+        for _ in range(self.total_height):
             row = [0] * width
             self.board.append(row)
 
-        for _ in range(self.totalHeight):
+        for _ in range(self.total_height):
             rows = [0] * (self.width)
-            self.activeBoard.append(rows)
+            self.active_board.append(rows)
 
     def __str__(self):
         visible_board = self.board[self.hidden:]  # skip the top 'padding' rows
         if self.active: 
-            return "\n".join(" ".join(str(cell) for cell in row) for row in self.activeBoard[self.hidden:])
+            return "\n".join(" ".join(str(cell) for cell in row) for row in self.active_board[self.hidden:])
         else: 
             return "\n".join(" ".join(str(cell) for cell in row) for row in visible_board)
 
-    def newBlock(self): 
+    def new_block(self): 
 
         # implement bag: cycles through the 7 in random order
         if self.blocks == []:
             self.blocks = BLOCK_TYPES[:]
         random.shuffle(self.blocks)
-        self.currentBlock = Block(self.blocks[0])
+        self.current_block = Block(self.blocks[0])
         self.blocks.pop(0)
-        self.currentBlock.y = self.hidden - 1
-        self.drawBlock()
+        self.current_block.y = self.hidden - 1
+        self.draw_block()
         
     # gets rid of rows that are full
-    def clearRows(self):
+    def clear_rows(self):
         visible_board = self.board[self.hidden:]
         updated_visible = [row for row in visible_board if not all(cell != 0 for cell in row)]
         rowsCleared = len(visible_board) - len(updated_visible)
@@ -259,14 +259,14 @@ class GameBoard:
         return rowsCleared
     
     # game ending condition, checks if a block is placed above the top visible row
-    def checkTop(self):    
+    def check_top(self):    
         for cell in self.board[self.hidden]:
             if cell != 0:
                 return True
         return False
         
     # input current block x and y + 1 in whichever direction you want to move
-    def canMove(self, block, newX, newY):
+    def can_move(self, block, newX, newY):
         # for loops figure out where the block actually is
         for y in range(4):
             for x in range(4):
@@ -278,7 +278,7 @@ class GameBoard:
                     # check boundaries
                     if boardX < 0 or boardX >= self.width:
                         return False
-                    if boardY < 0 or boardY >= self.totalHeight:
+                    if boardY < 0 or boardY >= self.total_height:
                         return False
                     
                     # it already is something
@@ -287,37 +287,37 @@ class GameBoard:
         return True
 
     # put the block in its location on the unlocked board
-    def drawBlock(self):
+    def draw_block(self):
         self.active = True
         # when it draws active board it will look like the saved board
-        self.activeBoard = [row[:] for row in self.board] 
+        self.active_board = [row[:] for row in self.board] 
 
         for i in range(4):
             for j in range(4):
-                if self.currentBlock.block[i][j]:
-                    x = self.currentBlock.x + j
-                    y = self.currentBlock.y + i
-                    if 0 <= y < self.totalHeight and 0 <= x < self.width:
-                        self.activeBoard[y][x] = self.currentBlock.type
+                if self.current_block.block[i][j]:
+                    x = self.current_block.x + j
+                    y = self.current_block.y + i
+                    if 0 <= y < self.total_height and 0 <= x < self.width:
+                        self.active_board[y][x] = self.current_block.type
 
     # draw blocks permanent state on the locked board
-    def lockBlock(self):
+    def lock_block(self):
         self.active = False
         for j in range(4):
             for i in range(4):
-                if self.currentBlock.block[j][i]:
-                    boardX = self.currentBlock.x + i
-                    boardY = self.currentBlock.y + j
-                    if 0 <= boardY < self.totalHeight and 0 <= boardX < self.width:
-                        self.board[boardY][boardX] = self.currentBlock.type
-        self.currentBlock = None
+                if self.current_block.block[j][i]:
+                    boardX = self.current_block.x + i
+                    boardY = self.current_block.y + j
+                    if 0 <= boardY < self.total_height and 0 <= boardX < self.width:
+                        self.board[boardY][boardX] = self.current_block.type
+        self.current_block = None
 
     # render the graphical representation using pygame
     def render_pygame(self):
         self.screen.fill((0, 0, 0))  # black background
         
         # current board state
-        for row in range(self.hidden, self.totalHeight):
+        for row in range(self.hidden, self.total_height):
             for col in range(self.width):
                 block_type = self.board[row][col]
                 if block_type != 0:
@@ -333,14 +333,14 @@ class GameBoard:
                          self.block_size, self.block_size))
         
         # add the current block
-        if self.currentBlock:
-            block_color = BLOCK_COLORS[self.currentBlock.type]  
+        if self.current_block:
+            block_color = BLOCK_COLORS[self.current_block.type]  
             for i in range(4):
                 for j in range(4):
-                    if self.currentBlock.block[i][j]:  
-                        x = self.currentBlock.x + j
-                        y = self.currentBlock.y + i
-                        if 0 <= x < self.width and 0 <= y < self.totalHeight: 
+                    if self.current_block.block[i][j]:  
+                        x = self.current_block.x + j
+                        y = self.current_block.y + i
+                        if 0 <= x < self.width and 0 <= y < self.total_height: 
                             pygame.draw.rect(
                                     self.screen, 
                                     block_color,
@@ -350,38 +350,35 @@ class GameBoard:
 
         pygame.display.update()  
 
-# gameplay functionality methods
+"""gameplay functionality methods"""
 class Tetris(GameBoard): 
     score = 0
 
     def __init__(self, height=20, width=10, padding=4, graphical=False):
         super().__init__(height, width, padding, graphical)
-
-    def increaseScore(self, value):
-        self.score += value
     
-    def moveRight(self):
-        if self.canMove(self.currentBlock, self.currentBlock.x + 1, self.currentBlock.y):
-            self.currentBlock.x += 1
-            self.drawBlock()
+    def move_right(self):
+        if self.can_move(self.current_block, self.current_block.x + 1, self.current_block.y):
+            self.current_block.x += 1
+            self.draw_block()
 
-    def moveLeft(self):
-        if self.canMove(self.currentBlock, self.currentBlock.x - 1, self.currentBlock.y):
-            self.currentBlock.x -= 1
-            self.drawBlock()
+    def move_left(self):
+        if self.can_move(self.current_block, self.current_block.x - 1, self.current_block.y):
+            self.current_block.x -= 1
+            self.draw_block()
 
-    def moveDown(self):
-        if self.currentBlock is None:
+    def move_down(self):
+        if self.current_block is None:
             return False
-        if self.canMove(self.currentBlock, self.currentBlock.x, self.currentBlock.y + 1):
-            self.currentBlock.y +=1
-            self.drawBlock()
+        if self.can_move(self.current_block, self.current_block.x, self.current_block.y + 1):
+            self.current_block.y +=1
+            self.draw_block()
         else: 
-            self.lockBlock()
+            self.lock_block()
             return False
 
-    def rotateLeft(self):
-        newConfig = self.currentBlock.clone()
+    def rotate_left(self):
+        newConfig = self.current_block.clone()
         newConfig.rotate(3)
 
         candidate_offsets = [0, -1, 1, -2, 2]
@@ -389,46 +386,46 @@ class Tetris(GameBoard):
         for offset in candidate_offsets:
             tempX = newConfig.x + offset
             
-            if self.canMove(newConfig, tempX, newConfig.y):
+            if self.can_move(newConfig, tempX, newConfig.y):
                 newConfig.x = tempX
-                self.currentBlock = newConfig
-                self.drawBlock()
+                self.current_block = newConfig
+                self.draw_block()
                 return
 
-    def rotateRight(self):
-        newConfig = self.currentBlock.clone()
+    def rotate_right(self):
+        newConfig = self.current_block.clone()
         newConfig.rotate(1)
 
         candidate_offsets = [0, -1, 1, -2, 2]
 
         for offset in candidate_offsets:
             tempX = newConfig.x + offset
-            if self.canMove(newConfig, tempX, newConfig.y):
+            if self.can_move(newConfig, tempX, newConfig.y):
                 newConfig.x = tempX
-                self.currentBlock = newConfig
-                self.drawBlock()
+                self.current_block = newConfig
+                self.draw_block()
                 return
 
-    def rotateFlip(self):
-        newConfig = self.currentBlock.clone()
+    def rotate_flip(self):
+        newConfig = self.current_block.clone()
         newConfig.rotate(2)
 
         candidate_offsets = [0, -1, 1, -2, 2]
 
         for offset in candidate_offsets:
             tempX = newConfig.x + offset
-            if self.canMove(newConfig, tempX, newConfig.y):
+            if self.can_move(newConfig, tempX, newConfig.y):
                 newConfig.x = tempX
-                self.currentBlock = newConfig
-                self.drawBlock()
+                self.current_block = newConfig
+                self.draw_block()
                 return
 
-    def hardDrop(self):
+    def hard_drop(self):
         distanceDropped = 0
-        while self.canMove(self.currentBlock, self.currentBlock.x, self.currentBlock.y + 1):
-            self.currentBlock.y +=1
+        while self.can_move(self.current_block, self.current_block.x, self.current_block.y + 1):
+            self.current_block.y +=1
             distanceDropped += 1
-        self.lockBlock()
+        self.lock_block()
         return distanceDropped
         
 def game_over_screen(stdscr, score):
@@ -446,7 +443,7 @@ def game_over_screen(stdscr, score):
 
 # currently formatted for playing in terminal
 # stdscr represents the terminal window
-def playGame(stdscr):
+def play_game(stdscr):
     curses.curs_set(0) # hide blinking terminal cursor
     stdscr.nodelay(True) # doesn't wait for keypress to do calls
     stdscr.timeout(100) # refresh rate 100ms
@@ -455,28 +452,28 @@ def playGame(stdscr):
         playing = True
         game = Tetris()
         score = 0
-        currentCombo = 0
+        current_combo = 0
         ticks = 0
         
         while playing: 
             
             stdscr.clear() # refresh screen
 
-            rowsCleared = game.clearRows()
+            rowsCleared = game.clear_rows()
             if rowsCleared == 0:
-                currentCombo = 0
+                current_combo = 0
             else:
-                currentCombo += 1
+                current_combo += 1
             
-            if game.checkTop():
+            if game.check_top():
                 playing = False
                 break
 
             # basic system that attempts to increase scoring for bigger clears and longer combos
-            score += (rowsCleared + currentCombo) ** 2 
+            score += (rowsCleared + current_combo) ** 2 
             
-            if game.currentBlock == None:
-                game.newBlock()
+            if game.current_block == None:
+                game.new_block()
 
             # this is which board we are drawing
             board_str = game.__str__().split('\n')
@@ -506,19 +503,19 @@ def playGame(stdscr):
                 key = -1
             
             if key == curses.KEY_LEFT:
-                game.moveLeft()
+                game.move_left()
             elif key == curses.KEY_RIGHT:
-                game.moveRight()
+                game.move_right()
             elif key == curses.KEY_DOWN:
-                game.moveDown()
+                game.move_down()
             elif key == ord('a'):
-                game.rotateLeft()
+                game.rotate_left()
             elif key == ord('s'):
-                game.rotateFlip()
+                game.rotate_flip()
             elif key == ord('d'):
-                game.rotateRight()
+                game.rotate_right()
             elif key == ord(' '):
-                game.hardDrop()
+                game.hard_drop()
             
             # we can stop the game now
             elif key == ord('p'):
@@ -526,7 +523,7 @@ def playGame(stdscr):
 
             ticks += 1
             if ticks % GRAVITY == 0:
-                game.moveDown()
+                game.move_down()
 
             # time.sleep(0.05) 
             # doesn't loop too fast
@@ -536,5 +533,5 @@ def playGame(stdscr):
             break
 
 """ UNCOMMENT TO PLAY MANUALLY IN TERMINAL """
-# curses.wrapper(playGame)
+# curses.wrapper(play_game)
     

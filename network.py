@@ -8,9 +8,6 @@ import curses
 import time
 import pygame
 
-""" Uncomment this if you want to just run it without rendering """
-# ENV = TetrisEnv()
-
 class QNetwork(nn.Module):
 
     def __init__(self, state_dim, num_actions):
@@ -29,22 +26,15 @@ class QNetwork(nn.Module):
         return self.model(x)
     
 class ReplayMemory: 
-    def __init__(self, cap, evict_oldest=False):
+    def __init__(self, cap):
         self.capacity = cap
         self.data = []
-        self.evict_oldest = evict_oldest
-        if self.evict_oldest: 
-            self.oldest = 0
     
     def push(self, state, action, reward, nstate, term):
         if len(self.data) < self.capacity: 
             self.data.append((state, action, reward, nstate, term))
         else: 
-            if self.evict_oldest:
-                idx = self.oldest
-                self.oldest = (self.oldest + 1) % self.capacity
-            else: 
-                idx = random.randint(0, self.capacity - 1)
+            idx = random.randint(0, self.capacity - 1)
             self.data[idx] = (state, action, reward, nstate, term)
 
     def sample(self, batch_size):
@@ -53,12 +43,8 @@ class ReplayMemory:
     def __len__(self):
         return len(self.data)
     
-    def empty(self):
-        self.data = []
-        if self.evict_oldest:
-            self.oldest = 0
-
-
+# using macro actions for delayed reward training. 
+# change anything with 'macro' to just 'actions' for simple training
 def train(env, 
           gamma=0.99, 
           lr=1e-3, 
@@ -67,9 +53,7 @@ def train(env,
           num_interactions= 10000, 
           eps=0.1, 
           verbose=True,
-          render=False,
-          summary_window=50):
-    
+          render=False):
 
     policy = QNetwork(env.state_dim, env.num_macro_actions)
     target = QNetwork(env.state_dim, env.num_macro_actions)
@@ -78,26 +62,20 @@ def train(env,
     replay_buffer = ReplayMemory(10000)
 
     opt = optim.Adam(policy.parameters(), lr=lr)
-    loss = nn.SmoothL1Loss() # look into if this is right?
+    loss = nn.SmoothL1Loss() # for DQN
 
     rng = np.random.default_rng()
 
     state = env.reset()
     ep_r = 0
     ep_rewards = []
-
-    # eps_start = 1.0
-    # eps_min = 0.05
     
     for i in tqdm(range(num_interactions)):
+        # renders to terminal
         if render:
             env.render()
-
         
-        # USING GREEDY EPSILON
-
-        # NOTE for some reason doing it like it was below was making the score get worse?
-        # eps = max(eps_min, eps_start - (eps_start - eps_min) * (i / (num_interactions - 1)))
+        # using greedy epsilon: policy action with prob 1 - epsilon, exploration otherwise
         if rng.random() < eps: 
             action_idx = rng.integers(0, env.num_macro_actions)
         else: 
@@ -141,82 +119,31 @@ def train(env,
 
         if term: 
             ep_rewards.append(ep_r)
+            # print episode rewards while training
             if verbose:
                 epi = len(ep_rewards)
                 print(f"Episode {epi:3d} - Reward: {ep_r:.2f}")
             state = env.reset()
             ep_r = 0
-        
-        #if verbose:
-        #    if ep_rewards:
-        #        window = min(len(ep_rewards), summary_window)
-        #        avg_last = sum(ep_rewards[-window:]) / window
-        #        print(f"\nDone {len(ep_rewards)} episodes.  "
-        #            f"Avg reward over last {window}: {avg_last:.2f}")
-        #    else:
-        #        print("\nNo complete episodes were recorded.")
 
     return policy, ep_rewards
 
-def evaluate(env: TetrisEnv, policy: QNetwork, episodes: 3, render_delay: 0.02):
-    for epi in range(1, episodes + 1):
-        state, done, total = env.reset(), False, 0.0
-        while not done:
-            with torch.no_grad():
-                logits = policy(torch.tensor(state, dtype=torch.float32))
-                act    = int(logits.argmax().item())
-            state, r, done = env.step(env.actions[act])
-            total += r
-            env.render(env.stdscr)
-            time.sleep(render_delay)
-        print(f"[Eval] Episode {epi}: {total:.2f}")
-
-def evaluate_pygame(policy: QNetwork, episodes=3, render_delay=0.05):
-    env = TetrisEnv(graphical=True)
-    for epi in range(1, episodes + 1):
-        state = env.reset()
-        done, total = False, 0.0
-
-        while not done:
-            with torch.no_grad():
-                logits = policy(torch.tensor(state, dtype=torch.float32))
-                act = int(logits.argmax().item())
-
-            state, r, done = env.macro_step(env.macro_actions[act])
-            total += r
-
-            env.game.render_pygame()
-            pygame.event.pump() 
-
-        print(f"[Eval] Episode {epi}: {total:.2f}")
-
-    input("Press Enter to quit...")
-    pygame.quit()
-"""
-run this one if you want it to render in terminal
-using python3 -i agent.py
-make sure it is in a terminal window sized adequately large or you will get errors
-"""
+# to run the network, call python3 -i network.py
 def main(stdscr, policy: QNetwork):
-    env = TetrisEnv(graphical=True)
-    # evaluate(env, policy, episodes=5, render_delay=0.05)
-    # stdscr.addstr(0, 0, "Press any key to exit...")
-    # stdscr.getch()
+   pass 
     
-    
-
+# set up to run and show graphics while training
 if __name__ == "__main__":
     env, policy = TetrisEnv(graphical=True), None
     policy, rewards = train(
         env,
         lr=2e-4,
         num_interactions=40000,
-        verbose=True,   # suppress tqdm & prints
-        render=False     # never call env.render()
+        verbose=True,   
+        render=False     
     )
-
     pygame.quit()
     
-    # curses.wrapper(main, policy)
-    #evaluate_pygame(policy, episodes=3, render_delay=0.1)
+    # the following renders it in terminal while training
+    # curses.wrapper(main, policy) 
 
