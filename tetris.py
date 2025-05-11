@@ -6,13 +6,13 @@ import time
 BLOCK_TYPES = [1, 2, 3, 4, 5, 6, 7]
 
 BLOCK_COLORS = {
-    1: (255, 255, 0),  # Yellow
-    2: (0, 255, 255),  # Cyan
-    3: (128, 0, 128),  # Purple
-    4: (255, 165, 0),  # Orange
-    5: (0, 0, 255),    # Blue
-    6: (0, 255, 0),    # Green
-    7: (255, 0, 0)     # Red
+    1: (255, 255, 0),  # yellow
+    2: (0, 255, 255),  # cyan
+    3: (128, 0, 128),  # purple
+    4: (255, 165, 0),  # orange
+    5: (0, 0, 255),    # blue
+    6: (0, 255, 0),    # green
+    7: (255, 0, 0)     # red
 }
 # while playing i have a game tick set up, and gravity will be 
 # move down if ticks % gravity == 0; higher gravity is slower 
@@ -196,10 +196,11 @@ class Block:
         return new_block
             
     
-
+# set up the board and define methods that handle interaction between board and blocks
 class GameBoard:
-
-    def __init__(self, height = 20, width = 10, padding = 4, graphical=False): # initialized to standard tetris board size plus padding
+    
+    # initialized to standard tetris board size plus padding
+    def __init__(self, height = 20, width = 10, padding = 4, graphical=False): 
         self.height = height
         self.width = width 
         self.hidden = padding
@@ -211,11 +212,13 @@ class GameBoard:
         self.blocks = BLOCK_TYPES[:]
         self.active = False # for determining which board to show
 
+        # pygame stuff for graphical rendering
         if graphical: 
             self.block_size = 16  # size of each block in pixels
             self.screen = pygame.display.set_mode((self.width * self.block_size, self.height * self.block_size))
             pygame.init()
 
+        # make boards with given sizes
         for _ in range(self.totalHeight):
             row = [0] * width
             self.board.append(row)
@@ -224,7 +227,6 @@ class GameBoard:
             rows = [0] * (self.width)
             self.activeBoard.append(rows)
 
-            
     def __str__(self):
         visible_board = self.board[self.hidden:]  # skip the top 'padding' rows
         if self.active: 
@@ -233,7 +235,8 @@ class GameBoard:
             return "\n".join(" ".join(str(cell) for cell in row) for row in visible_board)
 
     def newBlock(self): 
-        self.rotationCount = 0
+
+        # implement bag: cycles through the 7 in random order
         if self.blocks == []:
             self.blocks = BLOCK_TYPES[:]
         random.shuffle(self.blocks)
@@ -242,6 +245,7 @@ class GameBoard:
         self.currentBlock.y = self.hidden - 1
         self.drawBlock()
         
+    # gets rid of rows that are full
     def clearRows(self):
         visible_board = self.board[self.hidden:]
         updated_visible = [row for row in visible_board if not all(cell != 0 for cell in row)]
@@ -254,17 +258,12 @@ class GameBoard:
         self.board = self.board[:self.hidden] + updated_visible
         return rowsCleared
     
+    # game ending condition, checks if a block is placed above the top visible row
     def checkTop(self):    
         for cell in self.board[self.hidden]:
             if cell != 0:
                 return True
         return False
-
-    def checkColumnHeight(self):
-        for i, row in enumerate(self.board):
-            if any(cell != 0 for cell in row):
-                return self.height - i + self.hidden
-        return 0
         
     # input current block x and y + 1 in whichever direction you want to move
     def canMove(self, block, newX, newY):
@@ -278,10 +277,8 @@ class GameBoard:
 
                     # check boundaries
                     if boardX < 0 or boardX >= self.width:
-                        # print('out of bounds')
                         return False
                     if boardY < 0 or boardY >= self.totalHeight:
-                        # print('at the top/bottom')
                         return False
                     
                     # it already is something
@@ -289,7 +286,7 @@ class GameBoard:
                             return False
         return True
 
-
+    # put the block in its location on the unlocked board
     def drawBlock(self):
         self.active = True
         # when it draws active board it will look like the saved board
@@ -303,6 +300,7 @@ class GameBoard:
                     if 0 <= y < self.totalHeight and 0 <= x < self.width:
                         self.activeBoard[y][x] = self.currentBlock.type
 
+    # draw blocks permanent state on the locked board
     def lockBlock(self):
         self.active = False
         for j in range(4):
@@ -314,11 +312,11 @@ class GameBoard:
                         self.board[boardY][boardX] = self.currentBlock.type
         self.currentBlock = None
 
+    # render the graphical representation using pygame
     def render_pygame(self):
-        # Fill the screen with a background color
-        self.screen.fill((0, 0, 0))  # Black background
+        self.screen.fill((0, 0, 0))  # black background
         
-        # Draw the current board state
+        # current board state
         for row in range(self.hidden, self.totalHeight):
             for col in range(self.width):
                 block_type = self.board[row][col]
@@ -334,15 +332,15 @@ class GameBoard:
                          (row - self.hidden) * self.block_size, 
                          self.block_size, self.block_size))
         
-        # Draw the current block
+        # add the current block
         if self.currentBlock:
-            block_color = BLOCK_COLORS[self.currentBlock.type]  # Color based on block type
+            block_color = BLOCK_COLORS[self.currentBlock.type]  
             for i in range(4):
                 for j in range(4):
-                    if self.currentBlock.block[i][j]:  # If there is a block in this position
+                    if self.currentBlock.block[i][j]:  
                         x = self.currentBlock.x + j
                         y = self.currentBlock.y + i
-                        if 0 <= x < self.width and 0 <= y < self.totalHeight:  # Ensure it's within bounds
+                        if 0 <= x < self.width and 0 <= y < self.totalHeight: 
                             pygame.draw.rect(
                                     self.screen, 
                                     block_color,
@@ -350,9 +348,9 @@ class GameBoard:
                                      (y - self.hidden) * self.block_size, 
                                      self.block_size, self.block_size))
 
-        pygame.display.update()  # Update the display to show the changes
+        pygame.display.update()  
 
-
+# gameplay functionality methods
 class Tetris(GameBoard): 
     score = 0
 
@@ -380,7 +378,6 @@ class Tetris(GameBoard):
             self.drawBlock()
         else: 
             self.lockBlock()
-            # print('cant move down')
             return False
 
     def rotateLeft(self):
@@ -397,7 +394,6 @@ class Tetris(GameBoard):
                 self.currentBlock = newConfig
                 self.drawBlock()
                 return
-        # print('cant rotate left')
 
     def rotateRight(self):
         newConfig = self.currentBlock.clone()
@@ -412,7 +408,6 @@ class Tetris(GameBoard):
                 self.currentBlock = newConfig
                 self.drawBlock()
                 return
-        # print('cant rotate right')
 
     def rotateFlip(self):
         newConfig = self.currentBlock.clone()
@@ -427,7 +422,6 @@ class Tetris(GameBoard):
                 self.currentBlock = newConfig
                 self.drawBlock()
                 return
-        # print("cant rotate 180")
 
     def hardDrop(self):
         distanceDropped = 0
@@ -437,8 +431,6 @@ class Tetris(GameBoard):
         self.lockBlock()
         return distanceDropped
         
-
-
 def game_over_screen(stdscr, score):
     stdscr.clear()
     screen_height, screen_width = stdscr.getmaxyx()
@@ -480,8 +472,6 @@ def playGame(stdscr):
                 playing = False
                 break
 
-            game.checkColumnHeight()
-
             # basic system that attempts to increase scoring for bigger clears and longer combos
             score += (rowsCleared + currentCombo) ** 2 
             
@@ -501,12 +491,10 @@ def playGame(stdscr):
             start_y = max((screen_height - board_height) // 2, 0)
             start_x = max((screen_width - board_width) // 2, 0)
 
-            # draw board on terminal
+            # draw board on terminal with stats
             for i, line in enumerate(board_str):
                 stdscr.addstr(start_y + i, start_x, line)
-
-             # Draw status info to the right of the board
-            info_x = start_x + game.width * 2 + 4  # padding to the right of board
+            info_x = start_x + game.width * 2 + 4  
             stdscr.addstr(start_y, info_x, f"Score: {score}")
             stdscr.addstr(start_y + 2, info_x, f"Column Height: {game.checkColumnHeight()}")
 
@@ -547,6 +535,6 @@ def playGame(stdscr):
         else:
             break
 
-
+""" UNCOMMENT TO PLAY MANUALLY IN TERMINAL """
 # curses.wrapper(playGame)
     

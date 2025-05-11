@@ -4,26 +4,35 @@ import math
 import copy
 import numpy as np
 
+""" Environment compatible with the neural network """
 class TetrisEnv: 
     def __init__(self, stdscr=None, graphical=False):
+        # choose how to render it
         self.stdscr = stdscr
         self.graphical = graphical
+
+        # set up basics
         self.game = Tetris(graphical=self.graphical)
         self.state = None
         self.game.newBlock()
         self.term = False
         self.gravity = 5
-        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
-        self.macro_actions = self.get_macro_actions()
-        self.num_actions = len(self.actions)    
-        self.num_macro_actions = len(self.macro_actions)
         self.state_dim = 240 # because using active board now
+        # first attempt at training (without delayed reward)
+        self.actions = ['left', 'right', 'down', 'rotateLeft', 'rotateRight', 'rotateFlip', 'hardDrop'] 
+        self.num_actions = len(self.actions)    
+        # macro actions for training with a delayed reward
+        self.macro_actions = self.get_macro_actions()
+        self.num_macro_actions = len(self.macro_actions)
 
-        self.reset_game_stuff()
+        # properties to track how well it is doing
+        self.score = 0 # implementing like how a basic tetris does: points for every cell moved down without gravity
+        self.currentCombo = 0
+        self.ticks = 0
+        self.rotationCount = 0 # not used with macro actions
+        self.blocks_placed = 0 # try and get it to place more blocks so it stops building towers
 
-
-        
-    # new actions: place a block at a specific rotation in a chosen column
+    # delayed training: place a block at a specific rotation in a chosen column (many actions at once)
     def get_macro_actions(self):
         macro_actions = []
         # for each of the 7 different blocks
@@ -38,13 +47,13 @@ class TetrisEnv:
     
     # separate call for resetting per-game variables to make it easier
     def reset_game_stuff(self):
-        # dynamic reward properties
-        self.score = 0 # implementing like how a basic tetris does. points for every cell moved down without gravity
+        self.score = 0 
         self.currentCombo = 0
         self.ticks = 0
         self.rotationCount = 0
-        self.blocks_placed = 0 # try and get it to place more blocks so it stops building towers2
+        self.blocks_placed = 0 
 
+    # state is given to the network as a 240 input array
     def getState(self):
         return np.array(self.game.activeBoard).flatten()
     
@@ -55,14 +64,17 @@ class TetrisEnv:
         self.term = False
         return self.getState()
 
+    # handles doing all the steps in a macro step at once with existing game logic from tetris.py
     def macro_step(self, a):
         block_type, rotation, col = a
 
         if self.game.currentBlock is None:
             self.game.newBlock()
+        # if they chose a block that doesn't work
         if self.game.currentBlock.type != block_type:
             return self.getState(), -1, self.term
 
+        # for comparing how the new action affected the game
         previous_board = copy.deepcopy(self.game.board)
 
         # if valid action, do all the small steps at once
@@ -82,10 +94,7 @@ class TetrisEnv:
         self.score += dropped
         self.blocks_placed += 1
 
-        self.ticks += 1
-        if self.ticks % self.gravity == 0:
-            self.game.moveDown()
-        # do all of the rest of the step stuff
+        # do all of the normal step checks
         if self.game.checkTop():
             self.term = True
 
@@ -101,8 +110,8 @@ class TetrisEnv:
         return self.getState(), reward, self.term
 
 
+    # step for the simple actions
     def step(self, a):
-        # Create new block if no block exists
         if self.game.currentBlock is None:
             self.rotationCount = 0
             self.game.newBlock()
@@ -153,6 +162,9 @@ class TetrisEnv:
 
         return self.getState(), reward, self.term
         
+    """ FUNCTIONS FOR CALCULATING THE REWARD """
+
+    # check how many empty spaces are in each row to try and get it to fill them 
     def countRowGaps(self):
         gaps = 0
         for row in range(self.game.height): 
@@ -167,18 +179,19 @@ class TetrisEnv:
                     cell = self.game.board[row][column]
 
                     if cell == 0:
+                        # penalize rows that are closer to the bottom (more important they are filled in)
                         penalty = (row + 1) / self.game.height * 10
                         gaps += penalty 
         return int(gaps)
 
+    # check how many spaces are blocked off by a block above it
     def countHoles(self):
         holes = 0
-        b = self.game.board
         for column in range(self.game.width):
             seen_block = False
 
             for row in range(self.game.height):
-                cell = b[row][column]
+                cell = self.game.board[row][column]
                 
                 if cell != 0:
                     seen_block = True
@@ -186,30 +199,41 @@ class TetrisEnv:
                     holes += 1
 
         return holes
+
+    # gives the maximum height of the columns (trying to keep it lower)
+    def checkMaxColumnHeight(self):
+        for i, row in enumerate(self.game.board):
+            if any(cell != 0 for cell in row):
+                return self.game.height - i + self.game.hidden
+        return 0
     
+    # calculate each individual column height
     def columnHeights(self):
         heights = [0] * self.game.width
         for x in range(self.game.width):
             for y in range(self.game.height):
                 if self.game.board[y][x] != 0:
                     heights[x] = self.game.height - y
-                    break  # stop at first filled cell (top of stack)
+                    break  # stop at first filled cell
         return heights
 
+    # determine bumpiness by checking all the heights against each other
     def columnHeightVariance(self):
         heights = self.columnHeights()
         mean = sum(heights) / len(heights)
         variance = sum((h - mean) ** 2 for h in heights) / len(heights)
         return math.sqrt(variance)  # return std deviation
 
+    # tries to get it to spread the blocks out more to fill the rows wider
     def checkBreadth(self):
         bonus = 0
         for row in self.game.board[self.game.hidden:]:
             filled = sum(1 for cell in row if cell != 0)
-            if 7 <= filled:  # almost full 
+            if 7 <= filled:  
                 bonus += filled  # encourage near-full rows
         return bonus
 
+    # reward it getting closer to completing a row
     def nearFullRows(self):
         count = 0
         for row in self.game.board[self.game.hidden:]:
@@ -218,31 +242,28 @@ class TetrisEnv:
                 count += 1
         return count
 
+    # encourage it to place blocks against each other as tightly as possible
     def flushContacts(self, previous_board):
-        b = self.game.board
         contacts = 0
     
         for y in range(self.game.height):
             for x in range(self.game.width):
-                if b[y][x] != 0 and previous_board[y][x] == 0:
-                    # Count flush contacts with other placed blocks, not walls
+                if self.game.board[y][x] != 0 and previous_board[y][x] == 0:
+                    # only count if it is against another block not a wall 
                     for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                         nx, ny = x + dx, y + dy
                         if 0 <= nx < self.game.width and 0 <= ny < self.game.height:
-                            if b[ny][nx] != 0:
+                            if self.game.board[ny][nx] != 0:
                                 contacts += 1
     
-                    # Extra reward only if bottom cell is touching another block (not just floor)
-                    if y + 1 < self.game.height and b[y + 1][x] != 0:
+                    # check the bottom
+                    if y + 1 < self.game.height and self.game.board[y + 1][x] != 0:
                         contacts += 1
+                    # extra reward for being flush with the bottom
                     elif y + 1 == self.game.height:
                         contacts += 5
         return contacts
     
-    
-    def getState(self):
-        board = np.array(self.game.board).flatten()
-        return board
 
     # This is essentially taken from the play function in tetrisGame.py 
     # to render the terminal screen
@@ -260,10 +281,11 @@ class TetrisEnv:
             stdscr.addstr(start_y + i, start_x, line)
         stdscr.refresh()
 
-    # Moved here for increased readability
+    # reward calculation moved here for increased readability
     def calculateReward(self, locked, previous):
         reward = 0
 
+        # big reward for clearing rows
         rowsCleared = 0
         if locked:
             rowsCleared = self.game.clearRows()
@@ -272,11 +294,11 @@ class TetrisEnv:
                 print("ROW CLEARED !!!!!!!!!!!!!!!!!!!! ")
             else:
                 self.currentCombo = 0
-        
         reward += rowsCleared * 20000        
         reward += self.currentCombo * 10
         
-        max_height = self.game.checkColumnHeight()
+        # negative rewards for bad behavior
+        max_height = self.checkMaxColumnHeight()
         reward -= max_height * 2 
 
         gaps = self.countRowGaps()
@@ -287,6 +309,7 @@ class TetrisEnv:
         holes = self.countHoles()
         reward -= holes
 
+        # positive rewards for good behavior
         breadth = self.checkBreadth()
         reward += breadth * 100 
 
