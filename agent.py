@@ -16,13 +16,13 @@ class QNetwork(nn.Module):
     def __init__(self, state_dim, num_actions):
         super().__init__()
         self.model = nn.Sequential(
-            nn.Linear(state_dim, 128),
+            nn.Linear(state_dim, 256),
             nn.ReLU(),
-            nn.Linear(128, 128),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(128, 64),
+            nn.Linear(256, 128),
             nn.ReLU(),            
-            nn.Linear(64, num_actions)
+            nn.Linear(128, num_actions)
         )
     
     def forward(self, x):
